@@ -349,7 +349,7 @@ body.light .glow{display:none}body.light .top,body.light #dock{background:#14141
 <header class="top" id="sTop" hidden>
   <button class="brand" id="sBack" aria-label="Retour à Mes TP" title="Retour à Mes TP"><i><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></i><span class="lb">Réglages</span></button>
   <div class="sp"></div>
-  <div class="seg" id="sTabs" role="group" aria-label="Réglages"><button data-stab="layouts" aria-pressed="true">Mises en page</button><button data-stab="structs" aria-pressed="false">Structures</button><button data-stab="drive" aria-pressed="false">Drive</button><button data-stab="keys" aria-pressed="false">Raccourcis</button><button data-stab="prefs" aria-pressed="false">Par défaut</button></div>
+  <div class="seg" id="sTabs" role="group" aria-label="Réglages"><button data-stab="layouts" aria-pressed="true">Mises en page</button><button data-stab="structs" aria-pressed="false">Structures</button><button data-stab="keys" aria-pressed="false">Raccourcis</button><button data-stab="prefs" aria-pressed="false">Par défaut</button></div>
   <div class="sp"></div>
 </header>
 <main id="home" hidden></main>
@@ -1770,9 +1770,11 @@ function bindBackup(){
 /* ===== Google Drive : sauvegarde en plus du stockage local (version hébergée en https uniquement) ===== */
 const DSCOPE='https://www.googleapis.com/auth/drive.file',DKEY='cr-drive-v1',DFOLDER='Comptes rendus TP';
 const DR={token:null,exp:0,note:'',busy:false,timer:0};
-const hosted=()=>/^https?:$/.test(location.protocol);
+/* Connexion Google Drive désactivée (abandonnée pour l'instant). Pour la réactiver : DRIVE_ON=true + un identifiant client dans DEFAULT_CLIENT_ID. */
+const DRIVE_ON=false;
+const hosted=()=>DRIVE_ON&&/^https?:$/.test(location.protocol);
 /* Identifiant client Google public de Docline (pas un secret). Rempli une fois créé dans Google Cloud. */
-const DEFAULT_CLIENT_ID='686341313088-6hfs7op633spmbrd0du9emp8ees2dvgh.apps.googleusercontent.com';
+const DEFAULT_CLIENT_ID='';
 function dcfg(){let o={};try{o=JSON.parse(localStorage.getItem(DKEY)||'{}')||{}}catch(e){}return Object.assign({clientId:DEFAULT_CLIENT_ID,auto:true,exports:false,folderId:'',map:{},pending:[],last:0,email:''},o)}
 function dsave(c){try{localStorage.setItem(DKEY,JSON.stringify(c))}catch(e){showErr(e,'réglages Drive non enregistrés')}}
 const dOk=()=>!!DR.token&&Date.now()<DR.exp;
@@ -2131,7 +2133,7 @@ async function renderHome(){
 }
 function folderCard(){
   const st=folder.state;
-  const msg=st==='ok'?'Dossier relié : chaque TP y est copié à chaque sauvegarde.':st==='ask'?'Dossier relié, mais le navigateur demande la permission à chaque ouverture.':'Relie un dossier de ta clé USB pour y garder une copie de chaque TP.';
+  const msg=st==='ok'?'Dossier relié : chaque TP y est copié à chaque sauvegarde.':st==='ask'?'Dossier relié, mais le navigateur demande la permission à chaque ouverture.':'Relie un dossier (clé USB, ou dossier Google Drive pour ordinateur) pour y garder une copie de chaque TP.';
   return '<div class="rowh"><h2>Sur la clé USB</h2><span>Chrome / Edge</span></div><div class="grp" style="margin-top:14px"><div class="rw" style="padding:12px 16px"><span>'+msg+'<small>Les TP restent aussi dans ce navigateur. Fichier .tp.json copiable sur n’importe quel ordinateur.</small></span></div>'+
    '<div class="rw" style="gap:8px;justify-content:flex-start;flex-wrap:wrap;padding:10px 14px">'+
    (st==='ok'?'<button class="pill" data-f="sync">Tout copier maintenant</button><button class="pill" data-f="import">Importer depuis le dossier</button><button class="pill" data-f="forget">Délier</button>':st==='ask'?'<button class="pill act" data-f="regrant">Autoriser le dossier</button><button class="pill" data-f="forget">Délier</button>':'<button class="pill act" data-f="connect">Choisir un dossier</button>')+'</div></div>';
