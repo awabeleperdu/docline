@@ -1772,7 +1772,7 @@ const DSCOPE='https://www.googleapis.com/auth/drive.file',DKEY='cr-drive-v1',DFO
 const DR={token:null,exp:0,note:'',busy:false,timer:0};
 const hosted=()=>/^https?:$/.test(location.protocol);
 /* Identifiant client Google public de Docline (pas un secret). Rempli une fois créé dans Google Cloud. */
-const DEFAULT_CLIENT_ID='';
+const DEFAULT_CLIENT_ID='686341313088-6hfs7op633spmbrd0du9emp8ees2dvgh.apps.googleusercontent.com';
 function dcfg(){let o={};try{o=JSON.parse(localStorage.getItem(DKEY)||'{}')||{}}catch(e){}return Object.assign({clientId:DEFAULT_CLIENT_ID,auto:true,exports:false,folderId:'',map:{},pending:[],last:0,email:''},o)}
 function dsave(c){try{localStorage.setItem(DKEY,JSON.stringify(c))}catch(e){showErr(e,'réglages Drive non enregistrés')}}
 const dOk=()=>!!DR.token&&Date.now()<DR.exp;
