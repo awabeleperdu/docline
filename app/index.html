@@ -316,6 +316,17 @@ body.light .glow{display:none}body.light .top,body.light #dock{background:var(--
 .chips button{border:0;background:none;border-radius:7px;padding:5px 9px;color:var(--fg);font:13px var(--sys)}.chips button:hover{background:var(--soft)}
 .chips em{font-style:normal;font:700 11px var(--mono);color:var(--accent);margin-right:5px}
 
+
+/* Éditeur aussi serré que l'aperçu et le PDF */
+.blk{padding:3px 8px;margin:0 -8px}
+.ins{height:4px}.ins>button{top:-9px}
+.b-titre{margin-top:12px}
+.r-q,.r-r{padding:6px 12px}
+.r-q{display:flex;gap:.4em;align-items:baseline}.r-q .qn{white-space:nowrap;flex:none}.r-q textarea{flex:1;min-width:0}
+.b-code textarea{padding:8px 12px}
+.b-code input[type=text]{margin-top:2px}
+.b-img .btns{margin-top:2px}
+.nt{padding:6px 12px}
 /* Rendu final (aperçu, HTML exporté, PDF) */
 .out h2,.out h3,.out h4{margin:20px 0 7px;break-after:avoid}
 .out p{margin:0 0 9px}.out ul,.out ol{margin:0 0 9px;padding-left:24px}
@@ -327,7 +338,7 @@ body.light .glow{display:none}body.light .top,body.light #dock{background:var(--
 .out .tbl td,.out .tbl th{border:1px solid #9aa5b1;padding:5px 8px;text-align:left}.out .tbl th{background:#e9eef4}
 .out .tblw{margin:0 0 4px;overflow-x:auto;break-inside:avoid}
 .out .pb{break-after:page;height:0}.out .ccap{font-size:.85em;color:#5b6877;margin:0 0 10px}
-.out .qa{margin:14px 0 8px;break-inside:avoid}.out .qa p{margin:0 0 6px}
+.out .qa{margin:10px 0 6px;break-inside:avoid}.out .qa p{margin:0 0 4px}
 
 .r-t1{color:var(--t1-c);font-family:var(--t1-f);font-size:var(--t1-s);font-weight:var(--t1-w);font-style:var(--t1-i);line-height:1.3}
 .r-t2{color:var(--t2-c);font-family:var(--t2-f);font-size:var(--t2-s);font-weight:var(--t2-w);font-style:var(--t2-i);line-height:1.3}
@@ -481,7 +492,7 @@ html[data-ui="perso"] .glow{background:var(--acc);opacity:.12}
 <div class="glow"></div>
 <div id="err" role="alert"></div><div id="toast" role="status"></div>
 <header class="top" id="hTop">
-  <div class="brand"><i><svg class="ic" viewBox="0 0 24 24"><path d="M7 4h8l4 4v12H7z"/><path d="M10 12h6M10 16h6"/></svg></i>Docline<small class="ver">v14</small></div>
+  <div class="brand"><i><svg class="ic" viewBox="0 0 24 24"><path d="M7 4h8l4 4v12H7z"/><path d="M10 12h6M10 16h6"/></svg></i>Docline<small class="ver">v15</small></div>
   <div class="sp"></div>
   <button class="pill" id="hSet"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg><span class="lb">Réglages</span></button>
   <button class="pill" id="hInstall" hidden><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="lb">Installer l’appli</span></button>
@@ -1342,18 +1353,18 @@ function blockHTML(b,num,i){
   if(b.type==='titre'){
     body='<div class="hd r-t'+b.level+'"><span class="num">'+esc(num)+'</span><input type="text" data-f="text" value="'+esc(b.text)+'" placeholder="Titre de section"></div>';
   }else if(b.type==='texte'){
-    body='<div class="r-p"><textarea data-f="text" rows="2" placeholder="Écris ton texte ici (**gras**, *italique*, `code`)">'+esc(b.text)+'</textarea></div>';
+    body='<div class="r-p"><textarea data-f="text" rows="1" placeholder="Écris ton texte ici (**gras**, *italique*, `code`)">'+esc(b.text)+'</textarea></div>';
   }else if(b.type==='question'){
     body='<div class="r-q">'+(num?'<div class="qn">'+esc(num)+'</div>':'')+'<textarea data-f="text" rows="1" placeholder="Colle ou écris la question">'+esc(b.text)+'</textarea></div>';
   }else if(b.type==='reponse'){
-    body='<div class="r-r"><textarea data-f="text" rows="2" placeholder="Ta réponse">'+esc(b.text)+'</textarea></div>';
+    body='<div class="r-r"><textarea data-f="text" rows="1" placeholder="Ta réponse">'+esc(b.text)+'</textarea></div>';
   }else if(b.type==='liste'){
-    body='<div class="r-p"><textarea data-f="text" rows="3" placeholder="Un point par ligne">'+esc(b.text)+'</textarea></div>';
+    body='<div class="r-p"><textarea data-f="text" rows="2" placeholder="Un point par ligne">'+esc(b.text)+'</textarea></div>';
   }else if(b.type==='code'){
     body='<input type="text" data-f="cap" value="'+esc(b.cap)+'" placeholder="Légende du code (facultatif)" style="margin:0 0 4px">'+
-     '<textarea data-f="text" rows="4" spellcheck="false" placeholder="Colle ton code ou ta sortie de terminal ici">'+esc(b.text)+'</textarea>';
+     '<textarea data-f="text" rows="2" spellcheck="false" placeholder="Colle ton code ou ta sortie de terminal ici">'+esc(b.text)+'</textarea>';
   }else if(b.type==='bulle'){
-    body='<div class="nt" data-k="'+b.kind+'"><div class="lb">'+NOTE[b.kind]+'</div><textarea data-f="text" rows="2" placeholder="Texte de la bulle">'+esc(b.text)+'</textarea></div>';
+    body='<div class="nt" data-k="'+b.kind+'"><div class="lb">'+NOTE[b.kind]+'</div><textarea data-f="text" rows="1" placeholder="Texte de la bulle">'+esc(b.text)+'</textarea></div>';
   }else if(b.type==='image'){
     if(b.src){
       body='<figure><img src="'+b.src+'" alt="" style="width:'+b.w+'%"><div class="cap">'+(num?'<span class="num" style="color:inherit">'+num+' : </span>':'')+'<input type="text" data-f="cap" value="'+esc(b.cap)+'" placeholder="Légende de l’image" style="width:70%;display:inline-block"></div></figure>'+
