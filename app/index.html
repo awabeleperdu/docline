@@ -340,6 +340,8 @@ body.light .glow{display:none}body.light .top,body.light #dock{background:var(--
 .out .pb{break-after:page;height:0}.out .ccap{font-size:.85em;color:#5b6877;margin:0 0 10px}
 .out .qa{margin:10px 0 6px;break-inside:avoid}.out .qa p{margin:0 0 4px}
 
+
+.out pre.ch{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-style:dashed}.out pre.ct{border-top-left-radius:0;border-top-right-radius:0;border-top:0}
 .r-t1{color:var(--t1-c);font-family:var(--t1-f);font-size:var(--t1-s);font-weight:var(--t1-w);font-style:var(--t1-i);line-height:1.3}
 .r-t2{color:var(--t2-c);font-family:var(--t2-f);font-size:var(--t2-s);font-weight:var(--t2-w);font-style:var(--t2-i);line-height:1.3}
 .r-t3{color:var(--t3-c);font-family:var(--t3-f);font-size:var(--t3-s);font-weight:var(--t3-w);font-style:var(--t3-i);line-height:1.3}
@@ -492,7 +494,7 @@ html[data-ui="perso"] .glow{background:var(--acc);opacity:.12}
 <div class="glow"></div>
 <div id="err" role="alert"></div><div id="toast" role="status"></div>
 <header class="top" id="hTop">
-  <div class="brand"><i><svg class="ic" viewBox="0 0 24 24"><path d="M7 4h8l4 4v12H7z"/><path d="M10 12h6M10 16h6"/></svg></i>Docline<small class="ver">v15</small></div>
+  <div class="brand"><i><svg class="ic" viewBox="0 0 24 24"><path d="M7 4h8l4 4v12H7z"/><path d="M10 12h6M10 16h6"/></svg></i>Docline<small class="ver">v16</small></div>
   <div class="sp"></div>
   <button class="pill" id="hSet"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg><span class="lb">Réglages</span></button>
   <button class="pill" id="hInstall" hidden><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="lb">Installer l’appli</span></button>
@@ -938,15 +940,14 @@ function coverBody(d,ed){
 }
 function coverHTML(d){return coverBody(d)+(covPage(d)?'<div class="pb"></div>':'')}
 /* Les longs blocs de code sont coupés en morceaux (par lignes) pour ne jamais laisser de grand vide ni couper une ligne en deux */
-function expandBlocks(d){
+function expandBlocks(d,cuts){
   const out=[];
   d.blocks.forEach(b=>{
-    if(b.type==='code'){
-      const L=b.text.replace(/\s+$/,'').split('\n');
-      if(L.length>26){const k=Math.ceil(L.length/26),per=Math.ceil(L.length/k);
-        for(let i=0;i<k;i++)out.push(Object.assign({},b,{id:i?b.id+'~'+i:b.id,_n:b.id,_more:i<k-1,text:L.slice(i*per,(i+1)*per).join('\n'),cap:i===k-1?b.cap:''}));
-        return}
-    }
+    const cs=b.type==='code'&&cuts&&cuts[b.id];
+    if(cs&&cs.length){
+      const L=b.text.replace(/\s+$/,'').split('\n'),bd=[0].concat(cs.filter(c=>c>0&&c<L.length),[L.length]);
+      for(let i=0;i<bd.length-1;i++)out.push(Object.assign({},b,{id:i?b.id+'~'+i:b.id,_n:b.id,_o:b.id,_off:bd[i],_nl:bd[i+1]-bd[i],_more:i<bd.length-2,_tail:i>0,text:L.slice(bd[i],bd[i+1]).join('\n'),cap:i===bd.length-2?b.cap:''}));
+      return}
     out.push(b);
   });
   return out;
@@ -960,7 +961,7 @@ function blockOut(b,n){
   else if(b.type==='question'||b.type==='reponse'){const q=b.type==='question',ps=paras(b.text);if(!ps.length)ps.push('');
     h+='<div class="qa r-'+(q?'q':'r')+'">'+ps.map((p,i)=>'<p>'+(i===0&&q&&n[b.id]?'<span class="qn">'+esc(n[b.id])+'</span>':'')+inl(p)+'</p>').join('')+'</div>'}
   else if(b.type==='liste'){const t=b.ordered?'ol':'ul';h+='<'+t+' class="r-p">'+lines(b.text).map(l=>'<li>'+inl(l)+'</li>').join('')+'</'+t+'>'}
-  else if(b.type==='code'){h+='<pre><code>'+esc(b.text)+'</code></pre>'+(b.cap?'<div class="ccap">'+esc(n[b._n||b.id])+' : '+esc(b.cap)+'</div>':(b._more?'':'<div style="height:8px"></div>'))}
+  else if(b.type==='code'){h+='<pre'+((b._more||b._tail)?' class="cp'+(b._more?' ch':'')+(b._tail?' ct':'')+'"':'')+'><code>'+esc(b.text)+'</code></pre>'+(b.cap?'<div class="ccap">'+esc(n[b._n||b.id])+' : '+esc(b.cap)+'</div>':(b._more?'':'<div style="height:8px"></div>'))}
   else if(b.type==='bulle')h+='<div class="nt" data-k="'+b.kind+'"><div class="lb">'+NOTE[b.kind]+'</div>'+paras(b.text).map(p=>'<p>'+inl(p)+'</p>').join('')+'</div>';
   else if(b.type==='image'&&b.src)h+='<figure class="fig"><img src="'+b.src+'" alt="'+esc(b.cap)+'" style="width:'+b.w+'%;max-height:620px;object-fit:contain"><figcaption class="cap">'+esc(n[b.id])+(b.cap?' : '+esc(b.cap):'')+'</figcaption></figure>';
   else if(b.type==='tableau'){const [hd,...rs]=b.rows;
@@ -976,7 +977,7 @@ function toHTMLBody(d,pg,marks){
   const pm=pg&&pg.tocPage?{}:null;
   let first=true,forceNext=false;
   if(d.toc){const t=tocHTML(d);if(t){h+=(covPage(d)?mk(2):(hadFirst?'':mk(1,1)))+'<div class="ob'+(covPage(d)?' ps':'')+'" data-id="__toc">'+tocHTML(d,pg&&pg.titlePage)+'</div>';first=false}}
-  expandBlocks(d).forEach(b=>{
+  expandBlocks(d,pg&&pg.cuts).forEach(b=>{
     if(b.type==='saut'){forceNext=true;return}
     const st=pg&&pg.start[b.id];
     const isStart=st&&(first?false:true);
@@ -1154,12 +1155,13 @@ async function toDOCX(d){
 /* ===== Pagination mesurée : repères « Page n » et option intelligente (question + réponse ensemble) ===== */
 const PAGE_H=945; // hauteur utile A4 (257 mm = 971 px) moins une marge de sécurité
 let pg=null,pgT=0,pgRun=0;
-async function paginate(d){
+async function paginate(d,cuts0){
+  cuts0=cuts0||{};
   const m=$('#measure');m.style.cssText=styleVars(d.style);
   const n=numbers(d),items=[];
   if(d.cover&&!covPage(d))items.push({id:'__cover',html:coverHTML(d)});
   if(d.toc){const t=tocHTML(d);if(t)items.push({id:'__toc',html:t})}
-  expandBlocks(d).forEach(b=>{items.push({id:b.id,b,html:b.type==='saut'?'':blockOut(b,n)})});
+  expandBlocks(d,cuts0).forEach(b=>{items.push({id:b.id,b,html:b.type==='saut'?'':blockOut(b,n)})});
   m.innerHTML=items.map((x,i)=>'<div class="ob" data-i="'+i+'">'+x.html+'</div>').join('');
   if(document.fonts&&document.fonts.ready){try{await document.fonts.ready}catch(e){}}
   // attendre les images
@@ -1182,9 +1184,22 @@ async function paginate(d){
     if(!keepNext(it,items[i+1])){units.push(cur);cur=null}
   });
   if(cur)units.push(cur);
+  let changed=false;
+  /* un long code se coupe pile en bas de la page : il remplit la page puis continue sur la suivante */
+  const splitCode=(u,avail)=>{
+    const b=u.bs[0],n=Math.max(1,b._nl||b.text.replace(/\s+$/,'').split('\n').length);
+    const lh=Math.max(20,(u.h-22-(b.cap?30:8))/n),fit=Math.floor((avail-22-lh)/lh);
+    if(fit<5||fit>=n)return false;
+    const oid=b._o||b.id,cs=cuts0[oid]=cuts0[oid]||[];cs.push((b._off||0)+fit);cs.sort((a,c)=>a-c);changed=true;return true;
+  };
   const start={},pageOf={},titlePage={},shrink={};let page=covPage(d)?2:1,y=0,fresh=true,total=page;
   units.forEach(u=>{
     if(u.brk){if(y>0||!fresh){page++;y=0;fresh=true}return}
+    const isCode=u.bs&&u.bs.length===1&&u.bs[0]&&u.bs[0].type==='code';
+    if(isCode&&y+u.h>PAGE_H){
+      if(!fresh&&!splitCode(u,PAGE_H-y)){page++;y=0;fresh=true;u.ids.forEach((id,k)=>{if(!k)start[id]=true})}
+      if(fresh&&u.h>PAGE_H)splitCode(u,PAGE_H);
+    }
     const room=PAGE_H-y,isImg=u.bs&&u.bs.length===1&&u.bs[0]&&u.bs[0].type==='image';
     if(!fresh&&y+u.h>PAGE_H&&isImg&&room/u.h>=.6&&u.h<=PAGE_H){shrink[u.ids[0]]=room/u.h;u.h=room}  /* l'image rétrécit pour finir la page au lieu de laisser un grand vide */
     else if(!fresh&&y+u.h>PAGE_H&&u.h<=PAGE_H){page++;y=0;fresh=true;u.ids.forEach((id,k)=>{if(!k)start[id]=true})}
@@ -1195,9 +1210,10 @@ async function paginate(d){
     while(y>PAGE_H){y-=PAGE_H;page++}
     if(y===0)y=1;
   });
+  if(changed&&(cuts0.__n=(cuts0.__n||0)+1)<60)return paginate(d,cuts0);
   total=page;
   d.blocks.forEach(b=>{if(b.type==='titre')titlePage[b.id]=pageOf[b.id]});
-  const res={start,pageOf,titlePage,shrink,total,hs:items.map((x,i)=>[x.id,hs[i]])};
+  const res={start,pageOf,titlePage,shrink,cuts:cuts0,total,hs:items.map((x,i)=>[x.id,hs[i]])};
   return res;
 }
 function schedulePages(now){
@@ -1256,7 +1272,7 @@ const PW=794,PH=1123,PM=76,CW=642,CH=971,SC=2;
 function appCss(){return($$('style').map(s=>s.textContent).join('\n')).replace(/@font-face\{[^}]*\}/g,'')}
 async function pdfPages(d){
   const r=await paginate(d);pg=r;
-  const m=$('#measure');m.style.cssText=styleVars(d.style);m.innerHTML=toHTMLBody(d,null,false);
+  const m=$('#measure');m.style.cssText=styleVars(d.style);m.innerHTML=toHTMLBody(d,{start:{},cuts:r.cuts},false);
   if(document.fonts&&document.fonts.ready){try{await document.fonts.ready}catch(e){}}
   await Promise.all([...m.querySelectorAll('img')].map(im=>im.complete?0:new Promise(ok=>{im.onload=im.onerror=ok})));
   [...m.querySelectorAll('.ob[data-id]')].forEach(o=>{const r_=r.shrink&&r.shrink[o.dataset.id];if(!r_)return;const im=o.querySelector('img');if(im){const ih=im.offsetHeight;im.style.maxHeight=Math.max(120,Math.floor(ih*r_-28))+'px'}});
