@@ -260,6 +260,7 @@ body.light .glow{display:none}body.light .top,body.light #dock{background:var(--
 .seg.wide{display:flex}.seg.wide button{flex:1}
 @media print{.cv-edit{display:none}}
 .cvrow .seg button{padding:0 9px;min-width:30px}.cvrow .cvck{flex:1 1 100%}#modal:has(.cvrow){max-height:92vh;overflow:auto}
+.brand .ver{font-size:9px;opacity:.45;margin-left:6px;font-weight:600;align-self:flex-end;padding-bottom:3px}
 /* Blocs en édition */
 #blocks{display:flex;flex-direction:column}
 .blk{position:relative;border:1px solid transparent;border-radius:8px;padding:6px 8px;margin:2px -8px}
@@ -480,7 +481,7 @@ html[data-ui="perso"] .glow{background:var(--acc);opacity:.12}
 <div class="glow"></div>
 <div id="err" role="alert"></div><div id="toast" role="status"></div>
 <header class="top" id="hTop">
-  <div class="brand"><i><svg class="ic" viewBox="0 0 24 24"><path d="M7 4h8l4 4v12H7z"/><path d="M10 12h6M10 16h6"/></svg></i>Docline</div>
+  <div class="brand"><i><svg class="ic" viewBox="0 0 24 24"><path d="M7 4h8l4 4v12H7z"/><path d="M10 12h6M10 16h6"/></svg></i>Docline<small class="ver">v14</small></div>
   <div class="sp"></div>
   <button class="pill" id="hSet"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg><span class="lb">Réglages</span></button>
   <button class="pill" id="hInstall" hidden><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="lb">Installer l’appli</span></button>
@@ -2735,6 +2736,7 @@ document.addEventListener('click',async e=>{
   try{installEv.prompt();await installEv.userChoice}catch(er){showErr(er,'installation')}
 });
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&document.querySelector('link[rel=manifest]')){
+  if(navigator.serviceWorker.controller){let rl=0;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(rl++)return;toast('Mise à jour installée, rechargement…');setTimeout(()=>location.reload(),700)})}
   navigator.serviceWorker.register('sw.js').catch(e=>showErr(e,'mode hors ligne (service worker)'));
 }
 </script></body></html>
