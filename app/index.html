@@ -245,7 +245,7 @@ kbd,.kb{font:600 12px var(--mono);background:var(--card2);border:1px solid var(-
 
 #dock button:disabled{opacity:.35;pointer-events:none}
 body.light *,body.light *:before,body.light *:after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;transition:none!important;animation:none!important;box-shadow:none!important;text-shadow:none!important;scroll-behavior:auto!important}
-body.light .glow{display:none}body.light .top,body.light #dock{background:#14141c}body.light #panel,body.light #modal,body.light .pop{background:#1b1b26}
+body.light .glow{display:none}body.light .top,body.light #dock{background:var(--panel)}body.light #panel,body.light #modal,body.light .pop{background:var(--panel)}
 /* Blocs en édition */
 #blocks{display:flex;flex-direction:column}
 .blk{position:relative;border:1px solid transparent;border-radius:8px;padding:6px 8px;margin:2px -8px}
@@ -390,6 +390,25 @@ body.paper #outview .pgdiv:not(.first):not(.endp){display:flex;align-items:cente
   box-shadow:inset 0 16px 14px -14px rgba(0,0,0,.6),inset 0 -16px 14px -14px rgba(0,0,0,.6)}
 body.paper #outview .pgdiv:before,body.paper #outview .pgdiv:after{display:none}
 body.paper #outview .pgdiv.endp{margin:0;height:0;padding:0;background:none;box-shadow:none;display:block}
+/* styles de l'application */
+html[data-ui="ocean"]{--bg:#050E17;--panel:#0E1B28;--glass:rgba(14,27,40,.8);--sheetbg:#0E1B28;--acc:#0EA5E9;--accent:#0EA5E9;--acc2:#7DD3FC;--soft:rgba(14,165,233,.24)}
+html[data-ui="ocean"] .glow{background:#0EA5E9}
+html[data-ui="foret"]{--bg:#06100A;--panel:#102016;--glass:rgba(16,32,22,.8);--sheetbg:#102016;--acc:#22C55E;--accent:#22C55E;--acc2:#86EFAC;--soft:rgba(34,197,94,.22)}
+html[data-ui="foret"] .glow{background:#22C55E}
+html[data-ui="rose"]{--bg:#13060C;--panel:#25101A;--glass:rgba(37,16,26,.8);--sheetbg:#25101A;--acc:#EC4899;--accent:#EC4899;--acc2:#F9A8D4;--soft:rgba(236,72,153,.24)}
+html[data-ui="rose"] .glow{background:#EC4899}
+html[data-ui="ambre"]{--bg:#120C04;--panel:#241A0C;--glass:rgba(36,26,12,.8);--sheetbg:#241A0C;--acc:#F59E0B;--accent:#F59E0B;--acc2:#FCD34D;--soft:rgba(245,158,11,.22)}
+html[data-ui="ambre"] .glow{background:#F59E0B}
+html[data-ui="graphite"]{--bg:#0D0D0F;--panel:#1A1A1E;--glass:rgba(26,26,30,.82);--sheetbg:#1A1A1E;--acc:#8B8B97;--accent:#8B8B97;--acc2:#E4E4EC;--soft:rgba(160,160,180,.2)}
+html[data-ui="graphite"] .glow{background:#8B8B97}
+html[data-ui="clair"]{--bg:#ECEEF5;--fg:#14141F;--mute:#55556B;--dim:#6B6B82;--card:rgba(20,20,40,.05);--card2:rgba(20,20,40,.09);--line:rgba(20,20,40,.14);--glass:rgba(255,255,255,.86);--sheetbg:#fff;--panel:#fff;--hov:rgba(20,20,40,.06);--acc:#5B4BFF;--accent:#5B4BFF;--acc2:#4A3BE0;--soft:rgba(91,75,255,.14);--good:#15803D;--bad:#DC2626;color-scheme:light}
+html[data-ui="clair"] .glow{opacity:.1}
+html[data-ui="clair"] .top,html[data-ui="clair"] #dock,html[data-ui="clair"] #panel,html[data-ui="clair"] #modal,html[data-ui="clair"] .pop{box-shadow:0 8px 30px rgba(20,20,60,.12)}
+
+.ui-sw{display:flex;flex-wrap:wrap;gap:10px}
+.ui-b{display:flex;flex-direction:column;align-items:center;gap:6px;width:78px;padding:8px 6px;border-radius:14px;border:2px solid var(--line);background:var(--card);font-size:12px;font-weight:600}
+.ui-b i{width:46px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--b) 0 55%,var(--a) 55%);border:1px solid var(--line)}
+.ui-b[aria-pressed="true"]{border-color:var(--acc2)}
 </style></head><body>
 <div class="glow"></div>
 <div id="err" role="alert"></div><div id="toast" role="status"></div>
@@ -1888,6 +1907,20 @@ function dockRow(){
   return '<div class="lbl">Barre de blocs</div><div class="grp"><div class="rw"><span>Position<small>À gauche, elle reste visible sans cacher la page (écrans larges). Sur téléphone elle reste en bas.</small></span></div>'+
    '<div class="rw" style="gap:8px;justify-content:flex-start;padding:10px 14px"><button class="pill'+(l?'':' act')+'" data-dockset="bottom">En bas</button><button class="pill'+(l?' act':'')+'" data-dockset="left">À gauche</button></div></div>';
 }
+/* styles de l'application */
+const UIKEY='cr-ui-v1';
+const UIT=[['minuit','Minuit','#6A5BFF','#08080C'],['ocean','Océan','#0EA5E9','#050E17'],['foret','Forêt','#22C55E','#06100A'],['rose','Rose','#EC4899','#13060C'],['ambre','Ambre','#F59E0B','#120C04'],['graphite','Graphite','#8B8B97','#0D0D0F'],['clair','Clair','#5B4BFF','#ECEEF5']];
+function uiTheme(){try{const v=localStorage.getItem(UIKEY);return UIT.some(t=>t[0]===v)?v:'minuit'}catch(e){return'minuit'}}
+function applyUI(){
+  const v=uiTheme(),t=UIT.find(x=>x[0]===v),h=document.documentElement;
+  if(v==='minuit')h.removeAttribute('data-ui');else h.setAttribute('data-ui',v);
+  let m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t[3]);
+}
+function setUI(v){try{localStorage.setItem(UIKEY,v)}catch(e){}applyUI();if(typeof renderSettings==='function'&&typeof screenNow!=='undefined'&&screenNow==='settings')renderSettings()}
+function uiRow(){
+  const cur=uiTheme();
+  return '<div class="lbl">Style de l’application</div><div class="grp"><div class="rw" style="flex-wrap:wrap;gap:10px;justify-content:flex-start;padding:14px"><div class="ui-sw">'+UIT.map(t=>'<button class="ui-b" data-uiset="'+t[0]+'" aria-pressed="'+(cur===t[0])+'" style="--a:'+t[2]+';--b:'+t[3]+'"><i></i><span>'+t[1]+'</span></button>').join('')+'</div></div></div>';
+}
 /* mode feuilles */
 const PAPKEY='cr-paper-v1';
 function paperOn(){try{return localStorage.getItem(PAPKEY)!=='off'}catch(e){return true}}
@@ -1920,6 +1953,7 @@ function paletteItems(){
   KACT.forEach(a=>{if(!a.n||(!a.any&&mode!=='edit'))return;
     const add=!!a.blk,k=keyOf(a);
     it.push({n:(add?'Ajouter : ':'')+a.n,g:add?'Bloc':a.g,key:k?pretty(k):'',run:()=>runKey(a)})});
+  UIT.forEach(t=>it.push({n:'Style de l’appli : '+t[1],g:'Affichage',key:'',run:()=>setUI(t[0])}));
   it.push({n:'Feuilles séparées : activer / désactiver',g:'Affichage',key:'',run:()=>setPaper(!paperOn())});
   it.push({n:'Historique des versions',g:'Général',key:'',run:()=>openHistory()});
   it.push({n:'Réglages',g:'Général',key:'',run:()=>{if(typeof openSettings==='function')openSettings()}});
@@ -1945,13 +1979,14 @@ function drawPalette(q){
 }
 function palRun(i){const x=UXP.list[i];if(!x)return;closeModal();setTimeout(()=>x.run(),0)}
 function bindUX(){
-  applyDock();applyPaper();
+  applyDock();applyPaper();applyUI();
   const uh=updateHead;updateHead=function(){uh.apply(this,arguments);uxStats()};
   const sm=setMode;setMode=function(m){sm.apply(this,arguments);document.body.classList.toggle('vmode',m==='view');uxStats()};
   // infobulles avec raccourci
   KACT.filter(a=>a.blk).forEach(a=>{const b=$('#dock [data-add="'+a.blk+'"]');const k=keyOf(a);if(b&&k)b.title=a.n.replace(/ \(.*\)/,'')+' ('+pretty(k)+')'});
   document.addEventListener('click',e=>{
     if(e.target.closest('#uDock')){toggleDock();return}
+    const ui=e.target.closest('[data-uiset]');if(ui){setUI(ui.dataset.uiset);return}
     const pp=e.target.closest('[data-paperset]');if(pp){setPaper(pp.dataset.paperset==='on');if(typeof renderSettings==='function')renderSettings();return}
     const d=e.target.closest('[data-dockset]');if(d){setDock(d.dataset.dockset);if(typeof renderSettings==='function')renderSettings();return}
     const p=e.target.closest('[data-pi]');if(p){palRun(+p.dataset.pi)}
@@ -2335,7 +2370,7 @@ function renderPrefs(b){
    '<div class="lbl">Options</div><div class="grp"><div class="rw"><span>Page de garde</span>'+tg(p.cover,'cover','Page de garde')+'</div><div class="rw"><span>Sommaire</span>'+tg(p.toc,'toc','Sommaire')+'</div>'+
    '<div class="rw"><span>Afficher les pages<small>Repères « Page 1, Page 2… »</small></span>'+tg(p.marks,'marks','Afficher les pages')+'</div>'+
    '<div class="rw"><span>Mise en page intelligente<small>Question et réponse toujours ensemble</small></span>'+tg(p.smart,'smart','Mise en page intelligente')+'</div></div>'+
-   lightRow()+paperRow()+dockRow()+backupRow()+'<div class="lbl">Page de garde pré-remplie</div>'+f('nom','Ton nom')+f('classe','Classe')+f('etab','Établissement')+'</div></div>';
+   uiRow()+lightRow()+paperRow()+dockRow()+backupRow()+'<div class="lbl">Page de garde pré-remplie</div>'+f('nom','Ton nom')+f('classe','Classe')+f('etab','Établissement')+'</div></div>';
 }
 function bindSettings(){
   const root=$('#setBody');bindStyle(root);
