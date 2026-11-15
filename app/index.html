@@ -384,6 +384,12 @@ body.paper .pgmark.paper:before,body.paper .pgmark.paper:after{display:none}
 body.paper .pgmark.paper small{margin-left:8px;color:var(--dim);opacity:.75}
 body.paper .pgmark.paper.endp{margin:0;height:0;background:none;box-shadow:none;padding:0}
 body.paper .sheet{min-height:1123px}
+/* aperçu en feuilles */
+body.paper #outview .pgdiv.first{display:none}
+body.paper #outview .pgdiv:not(.first):not(.endp){display:flex;align-items:center;justify-content:center;margin:76px 0;height:36px;padding:0;background:var(--bg);color:var(--dim);font:600 11px var(--sys);letter-spacing:0;text-transform:none;position:relative;
+  box-shadow:inset 0 16px 14px -14px rgba(0,0,0,.6),inset 0 -16px 14px -14px rgba(0,0,0,.6)}
+body.paper #outview .pgdiv:before,body.paper #outview .pgdiv:after{display:none}
+body.paper #outview .pgdiv.endp{margin:0;height:0;padding:0;background:none;box-shadow:none;display:block}
 </style></head><body>
 <div class="glow"></div>
 <div id="err" role="alert"></div><div id="toast" role="status"></div>
@@ -822,7 +828,7 @@ function blockOut(b,n){
 }
 /* pg = résultat de paginate(); marks = repères « Page n » visibles (aperçu écran) */
 function toHTMLBody(d,pg,marks){
-  const n=numbers(d),mk=(p,first)=>marks?'<div class="pgdiv'+(first?' first':'')+'">Page '+p+'</div>':'';
+  const n=numbers(d),mk=(p,first)=>marks?'<div class="pgdiv'+(first?' first':'')+'">'+(marks===2?'':'Page '+p)+'</div>':'';
   let h='',page=1;
   if(d.cover){h+=mk(1,1)+'<div class="ob cov">'+coverHTML(d)+'</div>';page=2}
   const pm=pg&&pg.tocPage?{}:null;
@@ -1078,10 +1084,11 @@ function drawMarks(){
   if(paper)paperFit(box);
 }
 /* Mode « feuilles » : chaque page remplit une hauteur de feuille A4 */
-function paperFit(box){
+function paperFit(box,sel){sel=sel||'.pgmark.paper';
   const A4=1123,PAD=76,sh=$('.sheet');if(!sh)return;
   let top=sh.getBoundingClientRect().top;const pl=parseFloat(getComputedStyle(sh).paddingLeft)||0,pr=parseFloat(getComputedStyle(sh).paddingRight)||0;
-  $$('.pgmark.paper',box).forEach(m=>{
+  const all=sel==='.pgmark.paper'?$$(sel,box):$$(sel+',.pgdiv.endp',box);
+  all.forEach(m=>{
     if(m.classList.contains('endp')){m.style.height='0px';const y=m.getBoundingClientRect().top;m.style.height=Math.max(0,A4-PAD-(y-top))+'px';return}
     m.style.marginLeft=-pl+'px';m.style.marginRight=-pr+'px';m.style.marginTop=PAD+'px';
     const y=m.getBoundingClientRect().top;
@@ -1273,7 +1280,11 @@ function updateHead(){
   const c=$('#pgCount');if(c)c.textContent=pg?pg.total+' page'+(pg.total>1?'s':''):'…';
 }
 function redraw(){commit();renderCover();renderBlocks();if(mode==='view')renderOut();updateHead();save();schedulePages();drawMarks()}
-function renderOut(){$('#outview').innerHTML=toHTMLBody(doc,pg,!!doc.opts.marks)}
+function renderOut(){
+  const paper=typeof paperOn==='function'&&paperOn(),m=doc.opts.marks?1:(paper?2:0),o=$('#outview');
+  o.innerHTML=toHTMLBody(doc,pg,m)+(paper?'<div class="pgdiv paper endp"></div>':'');
+  if(paper)paperFit(o,'.pgdiv:not(.first):not(.endp)');
+}
 function setMode(m){
   mode=m;$('#mEdit').setAttribute('aria-pressed',m==='edit');$('#mView').setAttribute('aria-pressed',m==='view');
   $('#coverview').hidden=m==='view';$('#blocks').hidden=m==='view';$('#outview').hidden=m!=='view';
