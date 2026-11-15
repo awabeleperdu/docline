@@ -246,6 +246,20 @@ kbd,.kb{font:600 12px var(--mono);background:var(--card2);border:1px solid var(-
 #dock button:disabled{opacity:.35;pointer-events:none}
 body.light *,body.light *:before,body.light *:after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;transition:none!important;animation:none!important;box-shadow:none!important;text-shadow:none!important;scroll-behavior:auto!important}
 body.light .glow{display:none}body.light .top,body.light #dock{background:var(--panel)}body.light #panel,body.light #modal,body.light .pop{background:var(--panel)}
+
+.cover.cv-bloc{min-height:0;padding:18px 0 20px;justify-content:flex-start}
+.cover.cv-page{min-height:860px;padding:40px 0}
+.cover.cv-vtop{justify-content:flex-start}.cover.cv-vmiddle{justify-content:center}.cover.cv-vbottom{justify-content:flex-end}
+.cover{border-bottom:0}.cover.cv-line{border-bottom:2px solid var(--t1-c)}
+.cover.cv-bloc.cv-vmiddle,.cover.cv-bloc.cv-vbottom{justify-content:flex-start}
+#coverview{position:relative}
+.cv-edit{position:absolute;top:6px;right:0;font:600 12px var(--ui,inherit);border:1px solid var(--line,#ccd);background:var(--panel,#fff);color:var(--ink,#234);border-radius:8px;padding:5px 10px;cursor:pointer;opacity:.8}
+.cv-edit:hover{opacity:1}
+.cvrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line,#8883)}
+.cvrow .cvck{flex:1 1 130px}.cvck{display:flex;align-items:center;gap:8px;font-size:13px}
+.seg.wide{display:flex}.seg.wide button{flex:1}
+@media print{.cv-edit{display:none}}
+.cvrow .seg button{padding:0 9px;min-width:30px}.cvrow .cvck{flex:1 1 100%}#modal:has(.cvrow){max-height:92vh;overflow:auto}
 /* Blocs en édition */
 #blocks{display:flex;flex-direction:column}
 .blk{position:relative;border:1px solid transparent;border-radius:8px;padding:6px 8px;margin:2px -8px}
@@ -890,10 +904,40 @@ const paras=s=>refs(String(s||'')).split(/\n{2,}/).map(x=>x.trim()).filter(Boole
 const lines=s=>refs(String(s||'')).split('\n').map(x=>x.trim()).filter(Boolean);
 const plain=s=>runs(s).map(r=>r.t).join('');
 
-function coverHTML(d){
-  const m=d.meta,rows=[['Nom',m.nom],['Classe',m.classe],['Date',fmtDate(m.date)],['Professeur',m.prof]].filter(r=>r[1]);
-  return '<div class="cover"><div class="etab">'+esc(m.etab||'')+'</div><h1>'+esc(m.titre)+'</h1><div class="mod">'+esc(m.module)+'</div>'+
-    (rows.length?'<dl>'+rows.map(r=>'<dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd>').join('')+'</dl>':'')+'</div><div class="pb"></div>';
+const COVK=['etab','titre','module','infos'];
+function covCfg(d){
+  const c=d.coverCfg||{},have=(c.els||[]).filter(e=>COVK.includes(e.k));
+  COVK.forEach(k=>{if(!have.some(e=>e.k===k))have.push({k})});
+  return{mode:c.mode==='page'?'page':'bloc',vpos:['top','middle','bottom'].includes(c.vpos)?c.vpos:'top',line:c.line!==false,
+    els:have.map(e=>({k:e.k,on:e.on!==false,al:['left','center','right'].includes(e.al)?e.al:'left',sz:(e.sz===0||e.sz===2)?e.sz:1}))};
+}
+const covPage=d=>!!d.cover&&covCfg(d).mode==='page';
+const covInfos=m=>[['Nom',m.nom],['Classe',m.classe],['Date',fmtDate(m.date)],['Professeur',m.prof]].filter(r=>r[1]);
+function coverBody(d,ed){
+  const m=d.meta,c=covCfg(d),F=e=>e.sz===0?.8:e.sz===2?1.35:1,rows=covInfos(m);
+  const html=c.els.filter(e=>e.on).map(e=>{
+    const st='text-align:'+e.al+';font-size:'+(({etab:10,titre:26,module:13,infos:11})[e.k]*F(e)).toFixed(1)+'pt';
+    if(e.k==='etab')return(m.etab||ed)?'<div class="etab" style="'+st+'">'+esc(m.etab||'Établissement')+'</div>':'';
+    if(e.k==='titre')return'<h1 style="'+st+'">'+esc(m.titre||(ed?'Titre du TP':''))+'</h1>';
+    if(e.k==='module')return(m.module||ed)?'<div class="mod" style="'+st+'">'+esc(m.module||'')+'</div>':'';
+    return rows.length?'<dl style="'+st+';justify-content:'+(e.al==='center'?'center':e.al==='right'?'end':'start')+'">'+rows.map(r=>'<dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd>').join('')+'</dl>':'';
+  }).join('');
+  return'<div class="cover cv-'+c.mode+' cv-v'+c.vpos+(c.line?' cv-line':'')+'">'+html+'</div>';
+}
+function coverHTML(d){return coverBody(d)+(covPage(d)?'<div class="pb"></div>':'')}
+/* Les longs blocs de code sont coupés en morceaux (par lignes) pour ne jamais laisser de grand vide ni couper une ligne en deux */
+function expandBlocks(d){
+  const out=[];
+  d.blocks.forEach(b=>{
+    if(b.type==='code'){
+      const L=b.text.replace(/\s+$/,'').split('\n');
+      if(L.length>38){const k=Math.ceil(L.length/38),per=Math.ceil(L.length/k);
+        for(let i=0;i<k;i++)out.push(Object.assign({},b,{id:i?b.id+'~'+i:b.id,_n:b.id,_more:i<k-1,text:L.slice(i*per,(i+1)*per).join('\n'),cap:i===k-1?b.cap:''}));
+        return}
+    }
+    out.push(b);
+  });
+  return out;
 }
 function tocItems(d){const n=numbers(d);return d.blocks.filter(b=>b.type==='titre'&&b.text.trim()).map(b=>({l:b.level,n:n[b.id],t:b.text.trim()}))}
 function tocHTML(d,pgmap){const it=tocItems(d);return it.length?'<nav class="toc"><h2>Sommaire</h2><ol>'+it.map(x=>'<li class="l'+x.l+'">'+esc(x.n)+' '+esc(x.t)+(pgmap&&pgmap[x.id]?'<span>'+pgmap[x.id]+'</span>':'')+'</li>').join('')+'</ol></nav>':''}
@@ -904,9 +948,9 @@ function blockOut(b,n){
   else if(b.type==='question'||b.type==='reponse'){const q=b.type==='question',ps=paras(b.text);if(!ps.length)ps.push('');
     h+='<div class="qa r-'+(q?'q':'r')+'">'+ps.map((p,i)=>'<p>'+(i===0&&q&&n[b.id]?'<span class="qn">'+esc(n[b.id])+'</span>':'')+inl(p)+'</p>').join('')+'</div>'}
   else if(b.type==='liste'){const t=b.ordered?'ol':'ul';h+='<'+t+' class="r-p">'+lines(b.text).map(l=>'<li>'+inl(l)+'</li>').join('')+'</'+t+'>'}
-  else if(b.type==='code'){h+='<pre><code>'+esc(b.text)+'</code></pre>'+(b.cap?'<div class="ccap">'+esc(n[b.id])+' : '+esc(b.cap)+'</div>':'<div style="height:8px"></div>')}
+  else if(b.type==='code'){h+='<pre><code>'+esc(b.text)+'</code></pre>'+(b.cap?'<div class="ccap">'+esc(n[b._n||b.id])+' : '+esc(b.cap)+'</div>':(b._more?'':'<div style="height:8px"></div>'))}
   else if(b.type==='bulle')h+='<div class="nt" data-k="'+b.kind+'"><div class="lb">'+NOTE[b.kind]+'</div>'+paras(b.text).map(p=>'<p>'+inl(p)+'</p>').join('')+'</div>';
-  else if(b.type==='image'&&b.src)h+='<figure class="fig"><img src="'+b.src+'" alt="'+esc(b.cap)+'" style="width:'+b.w+'%"><figcaption class="cap">'+esc(n[b.id])+(b.cap?' : '+esc(b.cap):'')+'</figcaption></figure>';
+  else if(b.type==='image'&&b.src)h+='<figure class="fig"><img src="'+b.src+'" alt="'+esc(b.cap)+'" style="width:'+b.w+'%;max-height:620px;object-fit:contain"><figcaption class="cap">'+esc(n[b.id])+(b.cap?' : '+esc(b.cap):'')+'</figcaption></figure>';
   else if(b.type==='tableau'){const [hd,...rs]=b.rows;
     h+='<div class="tblw"><table class="tbl"><thead><tr>'+hd.map(c=>'<th>'+inl(c)+'</th>').join('')+'</tr></thead><tbody>'+rs.map(r=>'<tr>'+r.map(c=>'<td>'+inl(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div><div class="cap" style="margin:4px 0 12px">'+esc(n[b.id])+(b.cap?' : '+esc(b.cap):'')+'</div>'}
   return h;
@@ -914,18 +958,19 @@ function blockOut(b,n){
 /* pg = résultat de paginate(); marks = repères « Page n » visibles (aperçu écran) */
 function toHTMLBody(d,pg,marks){
   const n=numbers(d),mk=(p,first)=>marks?'<div class="pgdiv'+(first?' first':'')+'">'+(marks===2?'':'Page '+p)+'</div>':'';
-  let h='',page=1;
-  if(d.cover){h+=mk(1,1)+'<div class="ob cov">'+coverHTML(d)+'</div>';page=2}
+  let h='',page=1,hadFirst=false;
+  if(covPage(d)){h+=mk(1,1)+'<div class="ob cov">'+coverHTML(d)+'</div>';page=2}
+  else if(d.cover){h+=mk(1,1)+'<div class="ob" data-id="__cover">'+coverHTML(d)+'</div>';hadFirst=true}
   const pm=pg&&pg.tocPage?{}:null;
   let first=true,forceNext=false;
-  if(d.toc){const t=tocHTML(d);if(t){h+=(d.cover?mk(2):mk(1,1))+'<div class="ob'+(d.cover?' ps':'')+'" data-id="__toc">'+tocHTML(d,pg&&pg.titlePage)+'</div>';first=false}}
-  d.blocks.forEach(b=>{
+  if(d.toc){const t=tocHTML(d);if(t){h+=(covPage(d)?mk(2):(hadFirst?'':mk(1,1)))+'<div class="ob'+(covPage(d)?' ps':'')+'" data-id="__toc">'+tocHTML(d,pg&&pg.titlePage)+'</div>';first=false}}
+  expandBlocks(d).forEach(b=>{
     if(b.type==='saut'){forceNext=true;return}
     const st=pg&&pg.start[b.id];
     const isStart=st&&(first?false:true);
     let cls='ob';
-    if(forceNext||(isStart&&(d.opts.smart))||(first&&d.cover&&!d.toc))cls+=' ps';
-    if(marks&&(forceNext||isStart||(first&&!d.cover&&!d.toc)||(first&&d.cover&&!d.toc)))h+=mk(pg&&pg.pageOf[b.id]||page+1,first&&!d.cover);
+    if(forceNext||(isStart&&(d.opts.smart))||(first&&covPage(d)&&!d.toc))cls+=' ps';
+    if(marks&&(forceNext||isStart||(first&&!d.cover&&!d.toc)||(first&&covPage(d)&&!d.toc)))h+=mk(pg&&pg.pageOf[b.id]||page+1,first&&!d.cover);
     forceNext=false;first=false;
     h+='<div class="'+cls+'" data-id="'+b.id+'">'+blockOut(b,n)+'</div>';
   });
@@ -1017,7 +1062,7 @@ function wr(t,o={}){
 const wruns=(s,base={})=>runs(s).map(r=>wr(r.t,Object.assign({},base,r.b?{b:1}:{},r.i?{i:1}:{},r.c?{c:1}:{}))).join('');
 function wp(inner,o={}){
   const pp=(o.style?'<w:pStyle w:val="'+o.style+'"/>':'')+(o.keep?'<w:keepNext/>':'')+
-   (o.bar?'<w:pBdr><w:left w:val="single" w:sz="36" w:space="8" w:color="'+o.bar+'"/></w:pBdr>':'')+
+   ((o.bar||o.bb)?'<w:pBdr>'+(o.bar?'<w:left w:val="single" w:sz="36" w:space="8" w:color="'+o.bar+'"/>':'')+(o.bb?'<w:bottom w:val="single" w:sz="12" w:space="6" w:color="'+o.bb+'"/>':'')+'</w:pBdr>':'')+
    (o.shd?'<w:shd w:val="clear" w:color="auto" w:fill="'+o.shd+'"/>':'')+
    ((o.before!=null||o.after!=null)?'<w:spacing'+(o.before!=null?' w:before="'+o.before+'"':'')+(o.after!=null?' w:after="'+o.after+'"':'')+'/>':'')+
    (o.left!=null?'<w:ind w:left="'+o.left+'"'+(o.hang?' w:hanging="'+o.hang+'"':'')+'/>':'')+(o.jc?'<w:jc w:val="'+o.jc+'"/>':'');
@@ -1032,11 +1077,16 @@ function b64(src){const [h,b]=src.split(',');const bin=atob(b),u=new Uint8Array(
 async function toDOCX(d){
   const n=numbers(d),m=d.meta,th={c:d.style.roles.t1.color.slice(1),f:d.style.roles.p.font},media=[];let body='',nImg=0;
   if(d.cover){
-    body+=wp(wr((m.etab||'').toUpperCase(),{col:'5D6A79',sz:20}),{after:0});
-    body+=wp(wr(m.titre,{}),{style:'Title',before:2600,after:120});
-    body+=wp(wr(m.module||'',{col:'3B4757',sz:30}),{after:480});
-    [['Nom',m.nom],['Classe',m.classe],['Date',fmtDate(m.date)],['Professeur',m.prof]].filter(r=>r[1]).forEach(r=>{body+=wp(wr(r[0]+' : ',{col:'5D6A79'})+wr(r[1],{b:1}),{after:60})});
-    body+=PBRK;
+    const c=covCfg(d),pg_=c.mode==='page',F=e=>e.sz===0?.8:e.sz===2?1.35:1;let first=true;
+    const add=(inner,o)=>{o=o||{};if(first){o.before=pg_?(c.vpos==='top'?400:c.vpos==='middle'?3000:6000):0;first=false}body+=wp(inner,o)};
+    c.els.filter(e=>e.on).forEach(e=>{
+      const f=F(e),jc=e.al;
+      if(e.k==='etab'&&m.etab)add(wr(m.etab.toUpperCase(),{col:'5D6A79',sz:Math.round(20*f)}),{after:60,jc});
+      else if(e.k==='titre')add(wr(m.titre,{sz:Math.round(52*f)}),{style:'Title',after:120,jc});
+      else if(e.k==='module'&&m.module)add(wr(m.module,{col:'3B4757',sz:Math.round(30*f)}),{after:pg_?480:200,jc});
+      else if(e.k==='infos')covInfos(m).forEach(r=>add(wr(r[0]+' : ',{col:'5D6A79',sz:Math.round(22*f)})+wr(r[1],{b:1,sz:Math.round(22*f)}),{after:60,jc}));
+    });
+    if(pg_)body+=PBRK;else body+=wp('',{after:200,bb:th.c});
   }
   if(d.toc){const it=tocItems(d);if(it.length){body+=wp(wr('Sommaire',{b:1,col:th.c,sz:30}),{after:120});
     it.forEach(x=>body+=wp(wr(x.n+' '+x.t),{left:(x.l-1)*360,after:40}));body+=wp('',{after:200})}}
@@ -1056,7 +1106,7 @@ async function toDOCX(d){
     else if(b.type==='image'&&b.src){
       const dm=await dims(b.src),im=b64(b.src);nImg++;
       let cx=Math.round(5760000*b.w/100),cy=Math.round(cx*dm.h/dm.w);
-      if(cy>7600000){cx=Math.round(cx*7600000/cy);cy=7600000}
+      if(cy>5900000){cx=Math.round(cx*5900000/cy);cy=5900000}
       const rid='rIdImg'+nImg,fn='image'+nImg+'.'+im.ext;media.push({name:'word/media/'+fn,data:im.u,ext:im.ext,rid,fn});
       body+=wp('<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="'+cy+'"/><wp:docPr id="'+nImg+'" name="Image '+nImg+'" descr="'+xe(b.cap)+'"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="'+nImg+'" name="'+fn+'"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+rid+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>',{jc:'center',keep:1,after:60,before:120});
       body+=wp(wr(n[b.id]+(b.cap?' : '+b.cap:'')),{style:'Caption'});
@@ -1095,8 +1145,9 @@ let pg=null,pgT=0,pgRun=0;
 async function paginate(d){
   const m=$('#measure');m.style.cssText=styleVars(d.style);
   const n=numbers(d),items=[];
+  if(d.cover&&!covPage(d))items.push({id:'__cover',html:coverHTML(d)});
   if(d.toc){const t=tocHTML(d);if(t)items.push({id:'__toc',html:t})}
-  d.blocks.forEach(b=>{items.push({id:b.id,b,html:b.type==='saut'?'':blockOut(b,n)})});
+  expandBlocks(d).forEach(b=>{items.push({id:b.id,b,html:b.type==='saut'?'':blockOut(b,n)})});
   m.innerHTML=items.map((x,i)=>'<div class="ob" data-i="'+i+'">'+x.html+'</div>').join('');
   if(document.fonts&&document.fonts.ready){try{await document.fonts.ready}catch(e){}}
   // attendre les images
@@ -1115,15 +1166,17 @@ async function paginate(d){
   items.forEach((it,i)=>{
     const h=hs[i]||0;
     if(it.b&&it.b.type==='saut'){if(cur){units.push(cur);cur=null}units.push({brk:true,ids:[],h:0});return}
-    if(!cur)cur={ids:[],h:0};cur.ids.push(it.id);cur.h+=h;
+    if(!cur)cur={ids:[],h:0,bs:[]};cur.ids.push(it.id);cur.bs.push(it.b);cur.h+=h;
     if(!keepNext(it,items[i+1])){units.push(cur);cur=null}
   });
   if(cur)units.push(cur);
-  const start={},pageOf={},titlePage={};let page=d.cover?2:1,y=0,fresh=true,total=page;
+  const start={},pageOf={},titlePage={},shrink={};let page=covPage(d)?2:1,y=0,fresh=true,total=page;
   units.forEach(u=>{
     if(u.brk){if(y>0||!fresh){page++;y=0;fresh=true}return}
-    if(!fresh&&y+u.h>PAGE_H&&u.h<=PAGE_H){page++;y=0;fresh=true;u.ids.forEach((id,k)=>{if(!k)start[id]=true})}
-    else if(fresh&&u.ids[0]&&!u.ids[0].startsWith('__')&&page>(d.cover?2:1)){start[u.ids[0]]=true}
+    const room=PAGE_H-y,isImg=u.bs&&u.bs.length===1&&u.bs[0]&&u.bs[0].type==='image';
+    if(!fresh&&y+u.h>PAGE_H&&isImg&&room/u.h>=.6&&u.h<=PAGE_H){shrink[u.ids[0]]=room/u.h;u.h=room}  /* l'image rétrécit pour finir la page au lieu de laisser un grand vide */
+    else if(!fresh&&y+u.h>PAGE_H&&u.h<=PAGE_H){page++;y=0;fresh=true;u.ids.forEach((id,k)=>{if(!k)start[id]=true})}
+    else if(fresh&&u.ids[0]&&!u.ids[0].startsWith('__')&&page>(covPage(d)?2:1)){start[u.ids[0]]=true}
     u.ids.forEach(id=>{pageOf[id]=page});
     // un élément plus haut qu'une page déborde : on avance le compteur
     y+=u.h;fresh=false;
@@ -1132,7 +1185,7 @@ async function paginate(d){
   });
   total=page;
   d.blocks.forEach(b=>{if(b.type==='titre')titlePage[b.id]=pageOf[b.id]});
-  const res={start,pageOf,titlePage,total,hs:items.map((x,i)=>[x.id,hs[i]])};
+  const res={start,pageOf,titlePage,shrink,total,hs:items.map((x,i)=>[x.id,hs[i]])};
   return res;
 }
 function schedulePages(now){
@@ -1148,7 +1201,7 @@ function drawMarks(){
   $$('#blocks .pgmark').forEach(e=>e.remove());
   const paper=typeof paperOn==='function'&&paperOn();
   if(!pg||mode!=='edit'||!(doc.opts.marks||paper))return;
-  const first=doc.cover?2:1,lab=!!doc.opts.marks;
+  const first=covPage(doc)?2:1,lab=!!doc.opts.marks;
   const mark=(p,txt)=>{const d=document.createElement('div');d.className='pgmark'+(paper?' paper':'');d.innerHTML=lab?('Page '+p+(txt?' <small>'+txt+'</small>':'')):'';return d};
   const box=$('#blocks');
   if(doc.blocks.length){
@@ -1194,6 +1247,7 @@ async function pdfPages(d){
   const m=$('#measure');m.style.cssText=styleVars(d.style);m.innerHTML=toHTMLBody(d,null,false);
   if(document.fonts&&document.fonts.ready){try{await document.fonts.ready}catch(e){}}
   await Promise.all([...m.querySelectorAll('img')].map(im=>im.complete?0:new Promise(ok=>{im.onload=im.onerror=ok})));
+  [...m.querySelectorAll('.ob[data-id]')].forEach(o=>{const r_=r.shrink&&r.shrink[o.dataset.id];if(!r_)return;const im=o.querySelector('img');if(im){const ih=im.offsetHeight;im.style.maxHeight=Math.max(120,Math.floor(ih*r_-28))+'px'}});
   const obs=[...m.children].filter(e=>e.classList.contains('ob'));
   const pages=[];let cur=null,y=0;
   obs.forEach(o=>{
@@ -1257,11 +1311,9 @@ async function exportPDF(){
 /* ===== Éditeur : rendu des blocs ===== */
 const SHEETS=['ecole','classique','moderne'];
 function renderCover(){
-  const m=doc.meta,el=$('#coverview');
+  const el=$('#coverview');
   if(!doc.cover){el.innerHTML='';return}
-  const rows=[['Nom',m.nom],['Classe',m.classe],['Date',fmtDate(m.date)],['Professeur',m.prof]].filter(r=>r[1]);
-  el.innerHTML='<div class="cover"><div class="etab">'+esc(m.etab||'Établissement')+'</div><h1>'+esc(m.titre||'Titre du TP')+
-   '</h1><div class="mod">'+esc(m.module||'')+'</div>'+(rows.length?'<dl>'+rows.map(r=>'<dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd>').join('')+'</dl>':'')+'</div>';
+  el.innerHTML=coverBody(doc,true)+'<button class="cv-edit" data-cvopen title="Position, alignement, taille, ordre…">✎ Personnaliser</button>';
 }
 function insHTML(afterId){
   return '<div class="ins" data-after="'+afterId+'"><button data-ins aria-label="Ajouter un bloc ici" title="Ajouter un bloc ici">+</button><div class="chips">'+
@@ -1425,7 +1477,7 @@ function panePages(){
 let armStruct=null;
 function paneTP(){
   const m=doc.meta,f=(k,l,t)=>'<div class="fl"><label for="m_'+k+'">'+l+'</label><input class="inp" id="m_'+k+'" type="'+(t||'text')+'" data-meta="'+k+'" value="'+esc(m[k]||'')+'"></div>';
-  return '<div class="lbl" style="margin-top:6px">Page de garde</div>'+f('titre','Titre du TP')+f('module','Module / matière')+f('nom','Ton nom')+f('classe','Classe')+f('date','Date','date')+f('prof','Professeur')+f('etab','Établissement')+
+  return '<div class="lbl" style="margin-top:6px">Page de garde</div><button class="ghost" data-cvopen style="height:42px;font-size:13px;margin-bottom:8px">✎ Position et style de la page de garde</button>'+f('titre','Titre du TP')+f('module','Module / matière')+f('nom','Ton nom')+f('classe','Classe')+f('date','Date','date')+f('prof','Professeur')+f('etab','Établissement')+
    '<div class="lbl">Appliquer une structure</div><div class="plan">'+allStructs().map(s=>'<button data-struct="'+s.id+'"><span class="tx"><b>'+(armStruct===s.id?'Remplacer le contenu ? Touche encore pour confirmer':esc(s.name))+'</b><br><small style="color:var(--mute);font-weight:500">'+s.blocks.length+' blocs</small></span></button>').join('')+'</div>'+
    '<div class="lbl">Ma structure</div><div style="display:flex;gap:8px"><input class="inp" id="newStructName" placeholder="Nom de la structure"><button class="go" id="saveStruct" style="flex:none">OK</button></div><p style="color:var(--mute);font-size:12px;line-height:16px;margin:8px 4px 0">Enregistre ce TP comme structure : ses titres et blocs sont gardés, le texte est vidé.</p>'+
    '<button class="ghost" id="goSettings" style="margin-top:10px;height:42px;font-size:13px">Gérer mes structures et mises en page</button>'+
@@ -2186,6 +2238,50 @@ function bindAnnot(){
   });
   document.addEventListener('dblclick',e=>{const im=e.target.closest&&e.target.closest('#blocks .b-img img');if(im){const k=im.closest('.blk');if(k)openAnnot(k.dataset.id)}});
 }
+/* Personnalisation de la page de garde : mode, position, alignement, taille, ordre */
+const COVNAME={etab:'Établissement',titre:'Titre',module:'Module',infos:'Nom, classe, date'};
+const COVPRE={
+  g:{mode:'bloc',vpos:'top',line:true,al:'left'},
+  c:{mode:'bloc',vpos:'top',line:true,al:'center'},
+  p:{mode:'page',vpos:'middle',line:false,al:'center'}
+};
+function openCoverEditor(){
+  if(!doc.cover){doc.cover=true}
+  const c=covCfg(doc);
+  const seg=(k,v,l,cur)=>'<button class="'+(cur===v?'on':'')+'" data-cv="'+k+':'+v+'">'+l+'</button>';
+  const rows=c.els.map((e,i)=>'<div class="cvrow"><label class="cvck"><input type="checkbox" data-cvon="'+i+'"'+(e.on?' checked':'')+'> '+COVNAME[e.k]+'</label>'+
+    '<span class="seg">'+seg('al'+i,'left','⇤',e.al)+seg('al'+i,'center','↔',e.al)+seg('al'+i,'right','⇥',e.al)+'</span>'+
+    '<span class="seg">'+seg('sz'+i,0,'S',e.sz)+seg('sz'+i,1,'M',e.sz)+seg('sz'+i,2,'L',e.sz)+'</span>'+
+    '<span class="seg"><button data-cvmv="'+i+':-1"'+(i?'':' disabled')+'>↑</button><button data-cvmv="'+i+':1"'+(i<c.els.length-1?'':' disabled')+'>↓</button></span></div>').join('');
+  openModal('<div class="sh-head"><div><div class="sh-t">Page de garde</div><div class="sh-s">Position, alignement, taille</div></div><button class="cl" data-close aria-label="Fermer"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div>'+
+    '<div class="lbl">Modèles</div><div class="seg wide"><button data-cvpre="g">Compact à gauche</button><button data-cvpre="c">Compact centré</button><button data-cvpre="p">Page entière</button></div>'+
+    '<div class="lbl">Taille</div><div class="seg wide">'+seg('mode','bloc','Bloc compact',c.mode)+seg('mode','page','Page entière',c.mode)+'</div>'+
+    '<div class="lbl">Position verticale</div><div class="seg wide">'+seg('vpos','top','Haut',c.vpos)+seg('vpos','middle','Milieu',c.vpos)+seg('vpos','bottom','Bas',c.vpos)+'</div>'+
+    '<div class="lbl">Éléments</div>'+rows+
+    '<label class="cvck" style="margin-top:12px"><input type="checkbox" data-cvline'+(c.line?' checked':'')+'> Trait de séparation</label>'+
+    '<div style="display:flex;gap:8px;margin-top:14px"><button class="ghost" data-cvoff>Supprimer la page de garde</button><button class="go" data-close style="flex:none">OK</button></div></div>');
+}
+function cvApply(fn){
+  const c=covCfg(doc);fn(c);doc.coverCfg=c;save();redraw();
+  if(!$('#modal').hidden)openCoverEditor();
+}
+function bindCover(){
+  document.addEventListener('click',e=>{
+    const t=e.target.closest('[data-cvopen],[data-cv],[data-cvpre],[data-cvmv],[data-cvoff]');if(!t)return;
+    if(t.dataset.cvopen!==undefined){openCoverEditor();return}
+    if(!doc)return;
+    if(t.dataset.cvoff!==undefined){doc.cover=false;save();redraw();closeModal();return}
+    if(t.dataset.cvpre){const p=COVPRE[t.dataset.cvpre];cvApply(c=>{c.mode=p.mode;c.vpos=p.vpos;c.line=p.line;c.els.forEach(x=>x.al=p.al)});return}
+    if(t.dataset.cvmv){const[i,s]=t.dataset.cvmv.split(':').map(Number);cvApply(c=>{const j=i+s;if(j<0||j>=c.els.length)return;[c.els[i],c.els[j]]=[c.els[j],c.els[i]]});return}
+    if(t.dataset.cv){const[k,v]=t.dataset.cv.split(':');
+      cvApply(c=>{if(k==='mode'||k==='vpos')c[k]=v;else{const i=+k.slice(2);if(k[0]==='a')c.els[i].al=v;else c.els[i].sz=+v}})}
+  });
+  document.addEventListener('change',e=>{
+    const t=e.target;if(!doc)return;
+    if(t.dataset&&t.dataset.cvon!==undefined)cvApply(c=>{c.els[+t.dataset.cvon].on=t.checked});
+    else if(t.dataset&&t.dataset.cvline!==undefined)cvApply(c=>{c.line=t.checked});
+  });
+}
 /* ===== Historique des versions : points de restauration automatiques par TP ===== */
 const VMAX=12,VGAP=10*60*1000;
 let VLAST={};
@@ -2624,7 +2720,7 @@ function bindHome(){
     try{const r=localStorage.getItem(OLDKEY);if(r&&!localStorage.getItem('cr-migrated')){
       const d=JSON.parse(r);if(d&&Array.isArray(d.blocks)){const nd=ensureDoc(d);nd.id='tp-ancien';nd.meta.titre=(nd.meta.titre||'TP')+' (ancienne sauvegarde)';await store.put(nd)}
       localStorage.setItem('cr-migrated','1')}}catch(e){console.warn(e)}
-    bindEditor();bindKeys();bindDrive();bindLight();bindBackup();bindUX();bindAnnot();bindHistory();bindHome();bindSettings();bindModal();
+    bindEditor();bindKeys();bindDrive();bindLight();bindBackup();bindUX();bindAnnot();bindCover();bindHistory();bindHome();bindSettings();bindModal();
     await renderHome();show('home');driveInit();
     if(folder.state==='ok'){/* copie silencieuse au démarrage non nécessaire */}
   }catch(e){showErr(e,'démarrage')}
