@@ -323,6 +323,45 @@ body.light .glow{display:none}body.light .top,body.light #dock{background:#14141
 .r-q{background:var(--q-bg);border-left:4px solid var(--q-bar);border-radius:0 6px 6px 0;padding:8px 12px}
 .r-r{background:var(--r-bg);border-left:4px solid var(--r-bar);border-radius:0 6px 6px 0;padding:8px 12px}
 .qn{font-weight:700;margin-right:.4em}
+/* ===== Confort & finitions ===== */
+::selection{background:rgba(106,91,255,.35)}
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+#dock button{transition:background .15s,color .15s,transform .12s}
+#dock button:active{transform:scale(.94)}
+#dock button .ic{transition:transform .15s}
+#dock button:hover .ic{transform:translateY(-1px)}
+#uDock{color:var(--acc2)}
+/* barre à gauche (écrans larges) */
+@media (min-width:821px){
+  body.dock-left #dock{left:14px;right:auto;top:84px;bottom:16px;transform:none;width:138px;height:auto;max-width:none;border-radius:24px;padding:10px 8px;
+    display:grid;grid-template-columns:repeat(2,58px);grid-auto-rows:auto;justify-content:center;align-content:start;gap:4px;overflow-y:auto;overflow-x:hidden}
+  body.dock-left #dock button{flex:none;width:58px;height:58px;border-radius:16px}
+  body.dock-left #dock .vr{grid-column:1/-1;width:auto;height:1px;margin:5px 8px}
+  body.dock-left.panel-open #dock{left:14px}
+  body.dock-left:not(.vmode) .stage{padding-left:166px;padding-bottom:60px}
+  body.dock-left #stats{bottom:14px}
+}
+@media (max-width:820px){#dock #uDock,#dock .vr:last-of-type{display:none}}
+/* compteur */
+#stats{position:fixed;right:16px;bottom:96px;z-index:15;font-size:12px;font-weight:600;color:var(--dim);background:var(--glass);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:999px;padding:6px 12px;pointer-events:none}
+body.panel-open #stats,body.vmode #stats{display:none}
+@media (max-width:720px){#stats{display:none}}
+/* mode concentration */
+body.focus #eTop,body.focus #dock,body.focus #panel,body.focus .glow{display:none!important}
+body.focus .stage{padding-top:36px;padding-left:20px!important;margin-right:0!important}
+#fExit{position:fixed;top:14px;right:14px;z-index:40;opacity:.55;transition:opacity .2s}
+#fExit:hover,#fExit:focus-visible{opacity:1}
+/* palette de commandes */
+.pal{display:flex;flex-direction:column;gap:10px;width:min(560px,calc(100vw - 32px))}
+.pal input{width:100%;height:50px;border-radius:14px;border:1px solid var(--line);background:var(--card2);color:inherit;font:600 16px inherit;font-family:inherit;padding:0 16px}
+#pList{max-height:min(52vh,420px);overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.pal-i{display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;border-radius:12px;padding:10px 12px;background:transparent;color:inherit}
+.pal-i span{display:flex;flex-direction:column;min-width:0}.pal-i b{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pal-i small{color:var(--dim);font-size:12px}
+.pal-i kbd{flex:none;font:600 11px inherit;font-family:inherit;color:var(--dim);border:1px solid var(--line);border-radius:7px;padding:2px 7px}
+.pal-i:hover,.pal-i[aria-selected="true"]{background:var(--card2)}
+.pal-e{padding:18px;text-align:center;color:var(--dim)}
+.pal-h{font-size:12px;color:var(--dim);text-align:center}
 </style></head><body>
 <div class="glow"></div>
 <div id="err" role="alert"></div><div id="toast" role="status"></div>
@@ -373,6 +412,8 @@ body.light .glow{display:none}body.light .top,body.light #dock{background:#14141
     <button data-add="enonce"><svg class="ic" viewBox="0 0 24 24"><path d="M8 4h9l3 3v13H8z"/><path d="M5 8v13h11M11 11h6M11 15h6"/></svg>Énoncé</button>
     <button data-add="liste"><svg class="ic" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>Liste</button>
     <button data-add="saut"><svg class="ic" viewBox="0 0 24 24"><path d="M4 12h16M12 4v5M9 6l3 3 3-3M12 20v-5M9 18l3-3 3 3"/></svg>Saut</button>
+    <span class="vr"></span>
+    <button id="uDock" aria-label="Déplacer la barre" title="Déplacer la barre à gauche / en bas"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg><span id="uDockL">À gauche</span></button>
   </nav>
   <aside id="panel" hidden aria-label="Réglages"></aside>
 </div>
@@ -1423,6 +1464,9 @@ const KACT=[
  {id:'export',g:'Général',n:'Exporter (PDF, Word…)',d:'Ctrl+P',any:1},
  {id:'mode',g:'Général',n:'Éditer / Aperçu',d:'Alt+M',any:1},
  {id:'help',g:'Général',n:'Afficher les raccourcis',d:'F1',any:1},
+ {id:'palette',g:'Général',n:'Palette de commandes (tout chercher)',d:'Ctrl+K',any:1},
+ {id:'focus',g:'Général',n:'Mode concentration',d:'Alt+Z',any:1},
+ {id:'dockpos',g:'Général',n:'Barre de blocs : gauche / bas',d:'Alt+B',any:1},
  {id:'home',g:'Général',n:'Retour à Mes TP',d:'',any:1},
  {id:'p_style',g:'Panneaux',n:'Panneau Style',d:'',any:1},
  {id:'p_pages',g:'Panneaux',n:'Panneau Pages',d:'',any:1},
@@ -1505,6 +1549,9 @@ function runKey(a){
       case'mode':setMode(mode==='edit'?'view':'edit');break;
       case'help':$('#modal').hidden?openHelp():closeModal();break;
       case'home':goHome();break;
+      case'palette':openPalette();break;
+      case'focus':toggleFocus();break;
+      case'dockpos':toggleDock();break;
       case'p_style':case'p_pages':case'p_tp':{const t=a.id.slice(2);panelTab===t?closePanel():openPanel(t)}break;
     }
     return;
@@ -1767,6 +1814,88 @@ function bindBackup(){
     try{if(b.dataset.bk==='out')await backupAll();else $('#fOpen').click()}catch(er){showErr(er,'sauvegarde')}
   });
 }
+/* ===== Confort : barre de blocs à gauche, palette Ctrl+K, mode concentration, compteur ===== */
+const DKEY2='cr-dock-v1';
+function dockPos(){try{return localStorage.getItem(DKEY2)==='left'?'left':'bottom'}catch(e){return 'bottom'}}
+function applyDock(){
+  const l=dockPos()==='left';document.body.classList.toggle('dock-left',l);
+  const t=$('#uDockL');if(t)t.textContent=l?'En bas':'À gauche';
+}
+function setDock(p){try{localStorage.setItem(DKEY2,p)}catch(e){}applyDock()}
+function toggleDock(){setDock(dockPos()==='left'?'bottom':'left');toast('Barre de blocs : '+(dockPos()==='left'?'à gauche':'en bas'))}
+function dockRow(){
+  const l=dockPos()==='left';
+  return '<div class="lbl">Barre de blocs</div><div class="grp"><div class="rw"><span>Position<small>À gauche, elle reste visible sans cacher la page (écrans larges). Sur téléphone elle reste en bas.</small></span></div>'+
+   '<div class="rw" style="gap:8px;justify-content:flex-start;padding:10px 14px"><button class="pill'+(l?'':' act')+'" data-dockset="bottom">En bas</button><button class="pill'+(l?' act':'')+'" data-dockset="left">À gauche</button></div></div>';
+}
+/* mode concentration */
+function toggleFocus(force){
+  const on=typeof force==='boolean'?force:!document.body.classList.contains('focus');
+  document.body.classList.toggle('focus',on);
+  let b=$('#fExit');
+  if(!b){b=document.createElement('button');b.id='fExit';b.className='pill';b.textContent='Quitter la concentration';b.addEventListener('click',()=>toggleFocus(false));document.body.appendChild(b)}
+  b.hidden=!on;
+  if(on){if(typeof closePanel==='function')closePanel();toast('Mode concentration · Échap ou Alt+Z pour quitter')}
+}
+/* compteur */
+function uxStats(){
+  let c=$('#stats');if(!c){c=document.createElement('div');c.id='stats';document.body.appendChild(c)}
+  const eT=$('#eTop');if(!doc||!eT||eT.hidden){c.hidden=true;return}
+  const w=(doc.blocks.map(b=>b.text||'').join(' ').match(/\S+/g)||[]).length,n=doc.blocks.length;
+  c.hidden=false;c.textContent=w+' mot'+(w>1?'s':'')+' · '+n+' bloc'+(n>1?'s':'');
+}
+/* palette de commandes */
+const unrm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+function paletteItems(){
+  const it=[];
+  KACT.forEach(a=>{if(!a.n||(!a.any&&mode!=='edit'))return;
+    const add=!!a.blk,k=keyOf(a);
+    it.push({n:(add?'Ajouter : ':'')+a.n,g:add?'Bloc':a.g,key:k?pretty(k):'',run:()=>runKey(a)})});
+  it.push({n:'Réglages',g:'Général',key:'',run:()=>{if(typeof openSettings==='function')openSettings()}});
+  doc.blocks.forEach((b,i)=>{
+    const ty=(TYPES.find(t=>t.t===b.type)||{}).n||b.type,tx=String(b.text||b.cap||'').replace(/\s+/g,' ').trim();
+    it.push({n:(tx?tx.slice(0,70):'(vide)'),g:'Aller au bloc '+(i+1)+' · '+ty,key:'',run:()=>goBlock(b.id)});
+  });
+  return it;
+}
+let UXP={items:[],sel:0,list:[]};
+function openPalette(){
+  if(!doc)return;
+  UXP.items=paletteItems();UXP.sel=0;
+  openModal('<div class="pal"><input id="pIn" type="text" placeholder="Cherche une action ou un bloc…" autocomplete="off" spellcheck="false"><div id="pList" role="listbox"></div><div class="pal-h">↑ ↓ pour choisir · Entrée pour valider · Échap pour fermer</div></div>');
+  const inp=$('#pIn');drawPalette('');inp.focus();
+}
+function drawPalette(q){
+  const t=unrm(q).split(/\s+/).filter(Boolean);
+  UXP.list=UXP.items.filter(x=>{const h=unrm(x.n+' '+x.g);return t.every(w=>h.includes(w))}).slice(0,40);
+  if(UXP.sel>=UXP.list.length)UXP.sel=0;
+  $('#pList').innerHTML=UXP.list.length?UXP.list.map((x,i)=>'<button class="pal-i" role="option" aria-selected="'+(i===UXP.sel)+'" data-pi="'+i+'"><span><b>'+esc(x.n)+'</b><small>'+esc(x.g)+'</small></span>'+(x.key?'<kbd>'+esc(x.key)+'</kbd>':'')+'</button>').join(''):'<div class="pal-e">Rien trouvé</div>';
+  const s=$('#pList [aria-selected="true"]');if(s&&s.scrollIntoView)s.scrollIntoView({block:'nearest'});
+}
+function palRun(i){const x=UXP.list[i];if(!x)return;closeModal();setTimeout(()=>x.run(),0)}
+function bindUX(){
+  applyDock();
+  const uh=updateHead;updateHead=function(){uh.apply(this,arguments);uxStats()};
+  const sm=setMode;setMode=function(m){sm.apply(this,arguments);document.body.classList.toggle('vmode',m==='view');uxStats()};
+  // infobulles avec raccourci
+  KACT.filter(a=>a.blk).forEach(a=>{const b=$('#dock [data-add="'+a.blk+'"]');const k=keyOf(a);if(b&&k)b.title=a.n.replace(/ \(.*\)/,'')+' ('+pretty(k)+')'});
+  document.addEventListener('click',e=>{
+    if(e.target.closest('#uDock')){toggleDock();return}
+    const d=e.target.closest('[data-dockset]');if(d){setDock(d.dataset.dockset);if(typeof renderSettings==='function')renderSettings();return}
+    const p=e.target.closest('[data-pi]');if(p){palRun(+p.dataset.pi)}
+  });
+  document.addEventListener('input',e=>{if(e.target.id==='pIn'){UXP.sel=0;drawPalette(e.target.value)}});
+  document.addEventListener('keydown',e=>{
+    if(e.target&&e.target.id==='pIn'){
+      if(e.key==='ArrowDown'){e.preventDefault();UXP.sel=Math.min(UXP.list.length-1,UXP.sel+1);drawPalette(e.target.value)}
+      else if(e.key==='ArrowUp'){e.preventDefault();UXP.sel=Math.max(0,UXP.sel-1);drawPalette(e.target.value)}
+      else if(e.key==='Enter'){e.preventDefault();palRun(UXP.sel)}
+      else if(e.key==='Escape'){e.preventDefault();closeModal()}
+      return;
+    }
+    if(e.key==='Escape'&&document.body.classList.contains('focus')&&$('#modal').hidden){toggleFocus(false)}
+  });
+}
 /* ===== Google Drive : sauvegarde en plus du stockage local (version hébergée en https uniquement) ===== */
 const DSCOPE='https://www.googleapis.com/auth/drive.file',DKEY='cr-drive-v1',DFOLDER='Comptes rendus TP';
 const DR={token:null,exp:0,note:'',busy:false,timer:0};
@@ -1997,7 +2126,7 @@ function renderPrefs(b){
    '<div class="lbl">Options</div><div class="grp"><div class="rw"><span>Page de garde</span>'+tg(p.cover,'cover','Page de garde')+'</div><div class="rw"><span>Sommaire</span>'+tg(p.toc,'toc','Sommaire')+'</div>'+
    '<div class="rw"><span>Afficher les pages<small>Repères « Page 1, Page 2… »</small></span>'+tg(p.marks,'marks','Afficher les pages')+'</div>'+
    '<div class="rw"><span>Mise en page intelligente<small>Question et réponse toujours ensemble</small></span>'+tg(p.smart,'smart','Mise en page intelligente')+'</div></div>'+
-   lightRow()+backupRow()+'<div class="lbl">Page de garde pré-remplie</div>'+f('nom','Ton nom')+f('classe','Classe')+f('etab','Établissement')+'</div></div>';
+   lightRow()+dockRow()+backupRow()+'<div class="lbl">Page de garde pré-remplie</div>'+f('nom','Ton nom')+f('classe','Classe')+f('etab','Établissement')+'</div></div>';
 }
 function bindSettings(){
   const root=$('#setBody');bindStyle(root);
@@ -2171,7 +2300,7 @@ function bindHome(){
     try{const r=localStorage.getItem(OLDKEY);if(r&&!localStorage.getItem('cr-migrated')){
       const d=JSON.parse(r);if(d&&Array.isArray(d.blocks)){const nd=ensureDoc(d);nd.id='tp-ancien';nd.meta.titre=(nd.meta.titre||'TP')+' (ancienne sauvegarde)';await store.put(nd)}
       localStorage.setItem('cr-migrated','1')}}catch(e){console.warn(e)}
-    bindEditor();bindKeys();bindDrive();bindLight();bindBackup();bindHome();bindSettings();bindModal();
+    bindEditor();bindKeys();bindDrive();bindLight();bindBackup();bindUX();bindHome();bindSettings();bindModal();
     await renderHome();show('home');driveInit();
     if(folder.state==='ok'){/* copie silencieuse au démarrage non nécessaire */}
   }catch(e){showErr(e,'démarrage')}
