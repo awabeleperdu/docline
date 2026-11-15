@@ -931,7 +931,7 @@ function expandBlocks(d){
   d.blocks.forEach(b=>{
     if(b.type==='code'){
       const L=b.text.replace(/\s+$/,'').split('\n');
-      if(L.length>38){const k=Math.ceil(L.length/38),per=Math.ceil(L.length/k);
+      if(L.length>26){const k=Math.ceil(L.length/26),per=Math.ceil(L.length/k);
         for(let i=0;i<k;i++)out.push(Object.assign({},b,{id:i?b.id+'~'+i:b.id,_n:b.id,_more:i<k-1,text:L.slice(i*per,(i+1)*per).join('\n'),cap:i===k-1?b.cap:''}));
         return}
     }
