@@ -362,6 +362,21 @@ body.focus .stage{padding-top:36px;padding-left:20px!important;margin-right:0!im
 .pal-i:hover,.pal-i[aria-selected="true"]{background:var(--card2)}
 .pal-e{padding:18px;text-align:center;color:var(--dim)}
 .pal-h{font-size:12px;color:var(--dim);text-align:center}
+/* annotation */
+.an{display:flex;flex-direction:column;gap:10px}
+.an-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.an-g{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.an-g button:not(.an-c){display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;padding:6px 8px;border-radius:12px;background:var(--card2);color:inherit;font-size:11px;font-weight:600}
+.an-g button b{font-size:18px;line-height:1.1}
+.an-g button[aria-pressed="true"]:not(.an-c){background:var(--acc);color:#fff}
+.an-c{width:28px;height:28px;border-radius:50%;background:var(--c);border:2px solid var(--line)}
+.an-c[aria-pressed="true"]{outline:2px solid var(--acc2);outline-offset:2px}
+#anT{flex:1;min-width:180px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:inherit;padding:0 12px}
+.an-st{display:flex;justify-content:center;background:repeating-conic-gradient(#8883 0 25%,transparent 0 50%) 0 0/18px 18px;border-radius:12px;padding:8px;overflow:auto}
+#anCv{max-width:100%;max-height:58vh;touch-action:none;cursor:crosshair;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+.an-h{font-size:12px;color:var(--dim)}
+#modal:has(.an){width:min(1040px,calc(100vw - 24px))}
+.an{width:100%}
 </style></head><body>
 <div class="glow"></div>
 <div id="err" role="alert"></div><div id="toast" role="status"></div>
@@ -1176,7 +1191,7 @@ function blockHTML(b,num,i){
   }else if(b.type==='image'){
     if(b.src){
       body='<figure><img src="'+b.src+'" alt="" style="width:'+b.w+'%"><div class="cap">'+(num?'<span class="num" style="color:inherit">'+num+' : </span>':'')+'<input type="text" data-f="cap" value="'+esc(b.cap)+'" placeholder="Légende de l’image" style="width:70%;display:inline-block"></div></figure>'+
-       '<div class="btns">'+[30,50,70,100].map(w=>'<button data-act="w" data-w="'+w+'"'+(b.w==w?' class="on"':'')+'>'+w+'%</button>').join('')+'<button data-act="img">Remplacer</button><button data-act="ref" title="Copier un renvoi automatique">Réf.</button></div>';
+       '<div class="btns">'+[30,50,70,100].map(w=>'<button data-act="w" data-w="'+w+'"'+(b.w==w?' class="on"':'')+'>'+w+'%</button>').join('')+'<button data-act="annot" title="Flèches, cadres, texte, flou, recadrage (ou double-clic sur l’image)">Annoter</button><button data-act="img">Remplacer</button><button data-act="ref" title="Copier un renvoi automatique">Réf.</button></div>';
     }else body='<div class="drop"><b>Ctrl+V</b> pour coller une capture, glisser une image ici, ou <button class="btn" data-act="img" style="color:#17202a">Choisir un fichier</button></div>';
   }else if(b.type==='tableau'){
     body='<div class="tw"><table>'+b.rows.map((r,ri)=>'<tr>'+r.map((c,ci)=>'<td><input type="text" data-r="'+ri+'" data-c="'+ci+'" value="'+esc(c)+'"></td>').join('')+'</tr>').join('')+'</table></div>'+
@@ -1403,6 +1418,7 @@ function bindEditor(){
       case'w':b.w=+act.dataset.w;redraw();break;
       case'ref':copyText('{fig:'+id+'}','Renvoi');toast('Renvoi copié : colle-le dans un texte (ou tape / dans un texte)');break;
       case'img':imgTarget=id;$('#fImg').click();break;
+      case'annot':openAnnot(id);break;
       case'addrow':b.rows.push(b.rows[0].map(()=>''));redraw();break;
       case'addcol':b.rows.forEach(r=>r.push(''));redraw();break;
       case'delrow':if(b.rows.length>1){b.rows.pop();redraw()}break;
@@ -1851,6 +1867,7 @@ function paletteItems(){
   KACT.forEach(a=>{if(!a.n||(!a.any&&mode!=='edit'))return;
     const add=!!a.blk,k=keyOf(a);
     it.push({n:(add?'Ajouter : ':'')+a.n,g:add?'Bloc':a.g,key:k?pretty(k):'',run:()=>runKey(a)})});
+  it.push({n:'Historique des versions',g:'Général',key:'',run:()=>openHistory()});
   it.push({n:'Réglages',g:'Général',key:'',run:()=>{if(typeof openSettings==='function')openSettings()}});
   doc.blocks.forEach((b,i)=>{
     const ty=(TYPES.find(t=>t.t===b.type)||{}).n||b.type,tx=String(b.text||b.cap||'').replace(/\s+/g,' ').trim();
@@ -1894,6 +1911,143 @@ function bindUX(){
       return;
     }
     if(e.key==='Escape'&&document.body.classList.contains('focus')&&$('#modal').hidden){toggleFocus(false)}
+  });
+}
+/* ===== Annotation des captures : flèches, cadres, texte, numéros, flou, recadrage ===== */
+let AN=null;
+const ANC=['#e5342d','#f5b800','#1f9d55','#2563eb','#111111','#ffffff'];
+const ANT=[['arrow','↗','Flèche'],['rect','▭','Cadre'],['oval','◯','Ovale'],['num','①','Numéro'],['text','T','Texte'],['blur','▦','Flou'],['crop','✂','Recadrer']];
+function openAnnot(id){
+  const b=doc.blocks[idx(id)];if(!b||!b.src)return;
+  const img=new Image();
+  img.onerror=()=>showErr(new Error('Image illisible'),'annotation');
+  img.onload=()=>{
+    const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext('2d').drawImage(img,0,0);
+    AN={id,base:c,ops:[],hist:[],tool:'arrow',color:ANC[0],cur:null,jpg:/^data:image\/jpeg/.test(b.src)};
+    openModal(anHTML());anDraw();
+  };
+  img.src=b.src;
+}
+function anHTML(){
+  return '<div class="an"><div class="an-bar">'+
+    '<div class="an-g">'+ANT.map(t=>'<button data-at="'+t[0]+'" aria-pressed="'+(AN.tool===t[0])+'" title="'+t[2]+'"><b>'+t[1]+'</b><span>'+t[2]+'</span></button>').join('')+'</div>'+
+    '<div class="an-g">'+ANC.map(c=>'<button class="an-c" data-ac="'+c+'" aria-pressed="'+(AN.color===c)+'" aria-label="Couleur '+c+'" style="--c:'+c+'"></button>').join('')+'</div>'+
+    '<input id="anT" type="text" placeholder="Texte à poser puis clique sur l’image" '+(AN.tool==='text'?'':'hidden')+'>'+
+   '</div><div class="an-st"><canvas id="anCv"></canvas></div>'+
+   '<div class="an-bar"><button class="pill" id="anU">↶ Annuler</button><span class="an-h" id="anH">Glisse sur l’image pour dessiner.</span><span style="flex:1"></span><button class="pill" id="anX">Fermer</button><button class="pill act" id="anOK">Valider</button></div></div>';
+}
+function anHint(){
+  const h={arrow:'Glisse du départ vers la pointe.',rect:'Glisse pour entourer.',oval:'Glisse pour entourer.',num:'Clique pour poser 1, 2, 3…',text:'Écris le texte, puis clique où le poser.',blur:'Glisse sur ce qu’il faut cacher (mot de passe, IP…).',crop:'Glisse la zone à garder.'};
+  const e=$('#anH');if(e)e.textContent=h[AN.tool]||''
+}
+function anRender(cv,extra){
+  const g=cv.getContext('2d'),W=AN.base.width,H=AN.base.height,lw=Math.max(3,Math.round(W/260));
+  cv.width=W;cv.height=H;g.drawImage(AN.base,0,0);
+  const all=extra?AN.ops.concat([extra]):AN.ops;
+  g.lineCap='round';g.lineJoin='round';
+  all.forEach(o=>{
+    g.strokeStyle=g.fillStyle=o.c||AN.color;g.lineWidth=lw;
+    const x=Math.min(o.x1,o.x2),y=Math.min(o.y1,o.y2),w=Math.abs(o.x2-o.x1),h=Math.abs(o.y2-o.y1);
+    if(o.type==='arrow'){
+      const a=Math.atan2(o.y2-o.y1,o.x2-o.x1),hs=lw*5,d=Math.hypot(o.x2-o.x1,o.y2-o.y1);if(d<2)return;
+      g.beginPath();g.moveTo(o.x1,o.y1);g.lineTo(o.x2-Math.cos(a)*hs*.6,o.y2-Math.sin(a)*hs*.6);g.stroke();
+      g.beginPath();g.moveTo(o.x2,o.y2);g.lineTo(o.x2-hs*Math.cos(a-.42),o.y2-hs*Math.sin(a-.42));g.lineTo(o.x2-hs*Math.cos(a+.42),o.y2-hs*Math.sin(a+.42));g.closePath();g.fill();
+    }else if(o.type==='rect'){g.strokeRect(x,y,w,h)}
+    else if(o.type==='oval'){g.beginPath();g.ellipse(x+w/2,y+h/2,Math.max(1,w/2),Math.max(1,h/2),0,0,Math.PI*2);g.stroke()}
+    else if(o.type==='blur'){
+      if(w<4||h<4)return;const f=Math.max(6,Math.round(Math.min(w,h)/6)),tw=Math.max(1,Math.round(w/f)),th=Math.max(1,Math.round(h/f)),t=document.createElement('canvas');
+      t.width=tw;t.height=th;t.getContext('2d').drawImage(cv,x,y,w,h,0,0,tw,th);g.imageSmoothingEnabled=false;g.drawImage(t,0,0,tw,th,x,y,w,h);g.imageSmoothingEnabled=true;
+    }else if(o.type==='num'){
+      const r=Math.max(15,Math.round(W/55));g.beginPath();g.arc(o.x1,o.y1,r,0,Math.PI*2);g.fill();
+      g.fillStyle=(o.c==='#ffffff'||o.c==='#f5b800')?'#111':'#fff';g.font='700 '+Math.round(r*1.15)+'px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(String(o.n),o.x1,o.y1+1);
+    }else if(o.type==='text'){
+      const s=Math.max(18,Math.round(W/38));g.font='700 '+s+'px system-ui,sans-serif';g.textBaseline='top';g.textAlign='left';
+      if(o.c!=='#ffffff'){g.lineWidth=Math.max(3,s/5);g.strokeStyle='rgba(255,255,255,.9)';g.strokeText(o.t,o.x1,o.y1)}
+      else{g.lineWidth=Math.max(3,s/5);g.strokeStyle='rgba(0,0,0,.75)';g.strokeText(o.t,o.x1,o.y1)}
+      g.fillStyle=o.c;g.fillText(o.t,o.x1,o.y1);
+    }else if(o.type==='crop'){
+      g.fillStyle='rgba(0,0,0,.5)';g.fillRect(0,0,W,y);g.fillRect(0,y+h,W,H-y-h);g.fillRect(0,y,x,h);g.fillRect(x+w,y,W-x-w,h);
+      g.setLineDash([10,8]);g.strokeStyle='#fff';g.lineWidth=2;g.strokeRect(x,y,w,h);g.setLineDash([]);
+    }
+  });
+}
+function anDraw(extra){const cv=$('#anCv');if(cv)anRender(cv,extra)}
+function anSnap(){AN.hist.push({base:AN.base,ops:AN.ops.slice()})}
+function anPt(e){const cv=$('#anCv'),r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*cv.width/r.width,y:(e.clientY-r.top)*cv.height/r.height}}
+function anFlat(){const c=document.createElement('canvas');anRender(c);return c}
+function anOut(){
+  const c=anFlat();let o=AN.jpg?c.toDataURL('image/jpeg',.9):c.toDataURL('image/png');
+  if(!AN.jpg&&o.length>1500000)o=c.toDataURL('image/jpeg',.88);return o;
+}
+function anClose(){AN=null;closeModal()}
+function bindAnnot(){
+  document.addEventListener('click',e=>{
+    if(!AN)return;
+    const t=e.target.closest('[data-at]');if(t){AN.tool=t.dataset.at;$$('[data-at]').forEach(x=>x.setAttribute('aria-pressed',x===t));const i=$('#anT');i.hidden=AN.tool!=='text';if(!i.hidden)i.focus();anHint();return}
+    const c=e.target.closest('[data-ac]');if(c){AN.color=c.dataset.ac;$$('[data-ac]').forEach(x=>x.setAttribute('aria-pressed',x===c));return}
+    if(e.target.closest('#anU')){const h=AN.hist.pop();if(h){AN.base=h.base;AN.ops=h.ops;anDraw()}return}
+    if(e.target.closest('#anX')){anClose();return}
+    if(e.target.closest('#anOK')){
+      try{const b=doc.blocks[idx(AN.id)];if(b){b.src=anOut();anClose();redraw();toast('Capture annotée')}else anClose()}catch(er){showErr(er,'annotation')}
+    }
+  });
+  document.addEventListener('pointerdown',e=>{
+    if(!AN||e.target.id!=='anCv')return;e.preventDefault();
+    const p=anPt(e);
+    if(AN.tool==='text'){const v=($('#anT').value||'').trim();if(!v){toast('Écris d’abord le texte en haut');$('#anT').focus();return}anSnap();AN.ops.push({type:'text',x1:p.x,y1:p.y,x2:p.x,y2:p.y,t:v,c:AN.color});anDraw();return}
+    if(AN.tool==='num'){anSnap();AN.ops.push({type:'num',x1:p.x,y1:p.y,x2:p.x,y2:p.y,n:AN.ops.filter(o=>o.type==='num').length+1,c:AN.color});anDraw();return}
+    AN.cur={type:AN.tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y,c:AN.color};try{e.target.setPointerCapture(e.pointerId)}catch(x){}
+  });
+  document.addEventListener('pointermove',e=>{if(!AN||!AN.cur)return;const p=anPt(e);AN.cur.x2=p.x;AN.cur.y2=p.y;anDraw(AN.cur)});
+  document.addEventListener('pointerup',e=>{
+    if(!AN||!AN.cur)return;const o=AN.cur;AN.cur=null;
+    const w=Math.abs(o.x2-o.x1),h=Math.abs(o.y2-o.y1);
+    if(o.type==='arrow'?Math.hypot(w,h)<8:(w<8||h<8)){anDraw();return}
+    anSnap();
+    if(o.type==='crop'){
+      const f=anFlat(),x=Math.min(o.x1,o.x2),y=Math.min(o.y1,o.y2),n=document.createElement('canvas');n.width=Math.round(w);n.height=Math.round(h);
+      n.getContext('2d').drawImage(f,x,y,w,h,0,0,n.width,n.height);AN.base=n;AN.ops=[];
+    }else AN.ops.push(o);
+    anDraw();
+  });
+  document.addEventListener('keydown',e=>{
+    if(!AN)return;
+    if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'&&e.target.id!=='anT'){e.preventDefault();$('#anU').click()}
+  });
+  document.addEventListener('dblclick',e=>{const im=e.target.closest&&e.target.closest('#blocks .b-img img');if(im){const k=im.closest('.blk');if(k)openAnnot(k.dataset.id)}});
+}
+/* ===== Historique des versions : points de restauration automatiques par TP ===== */
+const VMAX=12,VGAP=10*60*1000;
+let VLAST={};
+async function verGet(id){try{return(await store.kvGet('ver-'+id))||[]}catch(e){return[]}}
+async function verAdd(d,label,force){
+  if(!d||store.mode!=='idb')return;
+  try{
+    const l=await verGet(d.id),last=l[0];
+    if(!force&&last&&Date.now()-last.t<VGAP)return;
+    if(last&&JSON.stringify(last.doc.blocks)===JSON.stringify(d.blocks)&&JSON.stringify(last.doc.meta)===JSON.stringify(d.meta))return;
+    l.unshift({t:Date.now(),label:label||'Automatique',doc:JSON.parse(JSON.stringify(d))});
+    await store.kvSet('ver-'+d.id,l.slice(0,VMAX));
+  }catch(e){console.warn('Historique :',e)}
+}
+async function openHistory(){
+  if(!doc)return;
+  if(store.mode!=='idb'){toast('Historique indisponible (stockage de secours)');return}
+  const l=await verGet(doc.id);
+  openModal('<div class="pal"><div class="sh-t" style="font-size:18px;font-weight:700">Historique des versions</div><div class="pal-h" style="text-align:left">Un point de restauration est pris à l’ouverture puis toutes les 10 minutes de travail (12 gardés). Restaurer ne perd rien : la version actuelle est gardée aussi.</div><div id="pList">'+
+   (l.length?l.map((v,i)=>'<div class="pal-i" style="cursor:default"><span><b>'+esc(new Date(v.t).toLocaleString('fr-FR',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))+'</b><small>'+esc(v.label)+' · '+v.doc.blocks.length+' blocs</small></span><button class="pill" data-vr="'+i+'">Restaurer</button></div>').join(''):'<div class="pal-e">Pas encore de version enregistrée pour ce TP.</div>')+'</div><div style="display:flex;gap:8px"><button class="pill" data-vnow>Garder une version maintenant</button></div></div>');
+}
+function bindHistory(){
+  const sv=save;save=function(){sv.apply(this,arguments);if(doc)verAdd(doc)};
+  const od=openDoc;openDoc=async function(id){const r=await od.apply(this,arguments);if(doc)verAdd(doc,'À l’ouverture');return r};
+  document.addEventListener('click',async e=>{
+    if(e.target.closest('[data-vnow]')){await verAdd(doc,'Manuelle',true);toast('Version gardée');openHistory();return}
+    const r=e.target.closest('[data-vr]');if(!r)return;
+    try{
+      const l=await verGet(doc.id),v=l[+r.dataset.vr];if(!v)return;
+      await verAdd(doc,'Avant restauration',true);
+      const d=ensureDoc(JSON.parse(JSON.stringify(v.doc)));d.updated=Date.now();await store.put(d);closeModal();await openDoc(d.id);toast('Version restaurée');
+    }catch(er){showErr(er,'restauration')}
   });
 }
 /* ===== Google Drive : sauvegarde en plus du stockage local (version hébergée en https uniquement) ===== */
@@ -2300,7 +2454,7 @@ function bindHome(){
     try{const r=localStorage.getItem(OLDKEY);if(r&&!localStorage.getItem('cr-migrated')){
       const d=JSON.parse(r);if(d&&Array.isArray(d.blocks)){const nd=ensureDoc(d);nd.id='tp-ancien';nd.meta.titre=(nd.meta.titre||'TP')+' (ancienne sauvegarde)';await store.put(nd)}
       localStorage.setItem('cr-migrated','1')}}catch(e){console.warn(e)}
-    bindEditor();bindKeys();bindDrive();bindLight();bindBackup();bindUX();bindHome();bindSettings();bindModal();
+    bindEditor();bindKeys();bindDrive();bindLight();bindBackup();bindUX();bindAnnot();bindHistory();bindHome();bindSettings();bindModal();
     await renderHome();show('home');driveInit();
     if(folder.state==='ok'){/* copie silencieuse au démarrage non nécessaire */}
   }catch(e){showErr(e,'démarrage')}
