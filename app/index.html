@@ -377,6 +377,13 @@ body.focus .stage{padding-top:36px;padding-left:20px!important;margin-right:0!im
 .an-h{font-size:12px;color:var(--dim)}
 #modal:has(.an){width:min(1040px,calc(100vw - 24px))}
 .an{width:100%}
+/* feuilles séparées */
+body.paper .pgmark.paper{display:flex;align-items:center;justify-content:center;margin:76px -11.836%;height:36px;padding:0;background:var(--bg);color:var(--dim);font:600 11px var(--sys);letter-spacing:0;text-transform:none;position:relative;
+  box-shadow:inset 0 16px 14px -14px rgba(0,0,0,.6),inset 0 -16px 14px -14px rgba(0,0,0,.6)}
+body.paper .pgmark.paper:before,body.paper .pgmark.paper:after{display:none}
+body.paper .pgmark.paper small{margin-left:8px;color:var(--dim);opacity:.75}
+body.paper .pgmark.paper.endp{margin:0;height:0;background:none;box-shadow:none;padding:0}
+body.paper .sheet{min-height:1123px}
 </style></head><body>
 <div class="glow"></div>
 <div id="err" role="alert"></div><div id="toast" role="status"></div>
@@ -1048,12 +1055,13 @@ function schedulePages(now){
 }
 function drawMarks(){
   $$('#blocks .pgmark').forEach(e=>e.remove());
-  if(!pg||mode!=='edit'||!doc.opts.marks)return;
-  const first=doc.cover?2:1;
-  const mark=(p,txt)=>{const d=document.createElement('div');d.className='pgmark';d.innerHTML='Page '+p+(txt?' <small>'+txt+'</small>':'');return d};
+  const paper=typeof paperOn==='function'&&paperOn();
+  if(!pg||mode!=='edit'||!(doc.opts.marks||paper))return;
+  const first=doc.cover?2:1,lab=!!doc.opts.marks;
+  const mark=(p,txt)=>{const d=document.createElement('div');d.className='pgmark'+(paper?' paper':'');d.innerHTML=lab?('Page '+p+(txt?' <small>'+txt+'</small>':'')):'';return d};
   const box=$('#blocks');
   if(doc.blocks.length){
-    const f=$('.ins',box);if(f)box.insertBefore(mark(first,''),f);
+    const f=$('.ins',box);if(f&&!paper)box.insertBefore(mark(first,''),f);
     let forceNext=false;
     doc.blocks.forEach((b,i)=>{
       if(b.type==='saut'){forceNext=true;return}
@@ -1066,7 +1074,20 @@ function drawMarks(){
       forceNext=false;
     });
   }
-  const end=document.createElement('div');end.className='pgmark';end.innerHTML='Fin · '+pg.total+' page'+(pg.total>1?'s':'');box.appendChild(end);
+  const end=document.createElement('div');end.className='pgmark'+(paper?' paper endp':'');if(!paper)end.innerHTML='Fin · '+pg.total+' page'+(pg.total>1?'s':'');box.appendChild(end);
+  if(paper)paperFit(box);
+}
+/* Mode « feuilles » : chaque page remplit une hauteur de feuille A4 */
+function paperFit(box){
+  const A4=1123,PAD=76,sh=$('.sheet');if(!sh)return;
+  let top=sh.getBoundingClientRect().top;const pl=parseFloat(getComputedStyle(sh).paddingLeft)||0,pr=parseFloat(getComputedStyle(sh).paddingRight)||0;
+  $$('.pgmark.paper',box).forEach(m=>{
+    if(m.classList.contains('endp')){m.style.height='0px';const y=m.getBoundingClientRect().top;m.style.height=Math.max(0,A4-PAD-(y-top))+'px';return}
+    m.style.marginLeft=-pl+'px';m.style.marginRight=-pr+'px';m.style.marginTop=PAD+'px';
+    const y=m.getBoundingClientRect().top;
+    m.style.marginTop=(PAD+Math.max(0,A4-(y-top)))+'px';
+    top=m.getBoundingClientRect().bottom;
+  });
 }
 const pgPrevIsQ=i=>{const b=doc.blocks[i];return b&&b.type==='question'};
 function updatePagesUI(){
@@ -1844,6 +1865,15 @@ function dockRow(){
   return '<div class="lbl">Barre de blocs</div><div class="grp"><div class="rw"><span>Position<small>À gauche, elle reste visible sans cacher la page (écrans larges). Sur téléphone elle reste en bas.</small></span></div>'+
    '<div class="rw" style="gap:8px;justify-content:flex-start;padding:10px 14px"><button class="pill'+(l?'':' act')+'" data-dockset="bottom">En bas</button><button class="pill'+(l?' act':'')+'" data-dockset="left">À gauche</button></div></div>';
 }
+/* mode feuilles */
+const PAPKEY='cr-paper-v1';
+function paperOn(){try{return localStorage.getItem(PAPKEY)!=='off'}catch(e){return true}}
+function applyPaper(){document.body.classList.toggle('paper',paperOn())}
+function setPaper(v){try{localStorage.setItem(PAPKEY,v?'on':'off')}catch(e){}applyPaper();if(typeof doc!=='undefined'&&doc&&mode==='edit')drawMarks()}
+function paperRow(){
+  const on=paperOn();
+  return '<div class="lbl">Affichage de l’éditeur</div><div class="grp"><div class="rw"><span>Feuilles séparées<small>Les pages apparaissent comme de vraies feuilles A4 avec un espace entre elles.</small></span><button class="tgl" role="switch" aria-checked="'+on+'" data-paperset="'+(on?'off':'on')+'" aria-label="Feuilles séparées"></button></div></div>';
+}
 /* mode concentration */
 function toggleFocus(force){
   const on=typeof force==='boolean'?force:!document.body.classList.contains('focus');
@@ -1867,6 +1897,7 @@ function paletteItems(){
   KACT.forEach(a=>{if(!a.n||(!a.any&&mode!=='edit'))return;
     const add=!!a.blk,k=keyOf(a);
     it.push({n:(add?'Ajouter : ':'')+a.n,g:add?'Bloc':a.g,key:k?pretty(k):'',run:()=>runKey(a)})});
+  it.push({n:'Feuilles séparées : activer / désactiver',g:'Affichage',key:'',run:()=>setPaper(!paperOn())});
   it.push({n:'Historique des versions',g:'Général',key:'',run:()=>openHistory()});
   it.push({n:'Réglages',g:'Général',key:'',run:()=>{if(typeof openSettings==='function')openSettings()}});
   doc.blocks.forEach((b,i)=>{
@@ -1891,13 +1922,14 @@ function drawPalette(q){
 }
 function palRun(i){const x=UXP.list[i];if(!x)return;closeModal();setTimeout(()=>x.run(),0)}
 function bindUX(){
-  applyDock();
+  applyDock();applyPaper();
   const uh=updateHead;updateHead=function(){uh.apply(this,arguments);uxStats()};
   const sm=setMode;setMode=function(m){sm.apply(this,arguments);document.body.classList.toggle('vmode',m==='view');uxStats()};
   // infobulles avec raccourci
   KACT.filter(a=>a.blk).forEach(a=>{const b=$('#dock [data-add="'+a.blk+'"]');const k=keyOf(a);if(b&&k)b.title=a.n.replace(/ \(.*\)/,'')+' ('+pretty(k)+')'});
   document.addEventListener('click',e=>{
     if(e.target.closest('#uDock')){toggleDock();return}
+    const pp=e.target.closest('[data-paperset]');if(pp){setPaper(pp.dataset.paperset==='on');if(typeof renderSettings==='function')renderSettings();return}
     const d=e.target.closest('[data-dockset]');if(d){setDock(d.dataset.dockset);if(typeof renderSettings==='function')renderSettings();return}
     const p=e.target.closest('[data-pi]');if(p){palRun(+p.dataset.pi)}
   });
@@ -2280,7 +2312,7 @@ function renderPrefs(b){
    '<div class="lbl">Options</div><div class="grp"><div class="rw"><span>Page de garde</span>'+tg(p.cover,'cover','Page de garde')+'</div><div class="rw"><span>Sommaire</span>'+tg(p.toc,'toc','Sommaire')+'</div>'+
    '<div class="rw"><span>Afficher les pages<small>Repères « Page 1, Page 2… »</small></span>'+tg(p.marks,'marks','Afficher les pages')+'</div>'+
    '<div class="rw"><span>Mise en page intelligente<small>Question et réponse toujours ensemble</small></span>'+tg(p.smart,'smart','Mise en page intelligente')+'</div></div>'+
-   lightRow()+dockRow()+backupRow()+'<div class="lbl">Page de garde pré-remplie</div>'+f('nom','Ton nom')+f('classe','Classe')+f('etab','Établissement')+'</div></div>';
+   lightRow()+paperRow()+dockRow()+backupRow()+'<div class="lbl">Page de garde pré-remplie</div>'+f('nom','Ton nom')+f('classe','Classe')+f('etab','Établissement')+'</div></div>';
 }
 function bindSettings(){
   const root=$('#setBody');bindStyle(root);
@@ -2344,7 +2376,7 @@ async function goHome(){
 async function openDoc(id){
   const d=await store.get(id);if(!d)throw new Error('TP introuvable dans la bibliothèque.');
   doc=ensureDoc(d);sel=null;pg=null;armStruct=null;
-  applyStyle();renderCover();renderBlocks();updateHead();setMode('edit');closePanel();setSave('Enregistré');histReset();show('editor');
+  applyStyle();renderCover();renderBlocks();updateHead();setMode('edit');closePanel();setSave('Enregistré');histReset();show('editor');$$('#blocks textarea').forEach(autosize);
   schedulePages(true);
 }
 const PAL=[['#6A5BFF','#2B2680'],['#2563EB','#12306E'],['#15803D','#0B3B1E'],['#D97706','#6B3503'],['#DB2777','#5B1038'],['#0F766E','#083B37'],['#7C3AED','#3B1B7A']];
